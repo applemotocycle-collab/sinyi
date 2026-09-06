@@ -1,0 +1,2324 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新藝陶瓷 Sin Yi Ceramics — 馬賽克拼貼模擬系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --ink:#1c2521;
+    --paper:#f6f5f1;
+    --line:#d8d5cc;
+    --accent:#3a6b5c;
+    --accent-2:#b5651d;
+    --panel:#ffffff;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family: "Noto Sans TC","Helvetica Neue",Arial,sans-serif;
+    line-height:1.5;
+  }
+  header{
+    padding:20px 28px; border-bottom:2px solid var(--ink);
+    display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+  header h1{ font-size:20px; margin:0; letter-spacing:.02em;}
+  header .sub{ font-size:13px; color:#5b655f;}
+  .brand-line{ font-size:13px; font-weight:700; color:var(--accent); letter-spacing:.03em; margin-bottom:2px;}
+  .brand-line .brand-en{ font-weight:500; color:#6b756e; letter-spacing:.08em; font-size:11px; margin-left:4px;}
+  .site-footer{
+    border-top:1px solid var(--line); padding:14px 28px 24px; margin-top:12px;
+    font-size:11.5px; color:#7a837c; line-height:1.7;
+  }
+  .tabs{ display:flex; gap:0; border-bottom:2px solid var(--ink); }
+  .tab-btn{
+    padding:10px 22px; background:none; border:none; cursor:pointer;
+    font-size:14px; font-weight:600; color:#6b756e; border-bottom:3px solid transparent;
+    margin-bottom:-2px;
+  }
+  .tab-btn.active{ color:var(--ink); border-bottom-color:var(--accent-2); }
+  .layout{ display:grid; grid-template-columns: 300px 1fr; gap:0; min-height:calc(100vh - 110px); }
+  .sidebar{
+    border-right:1px solid var(--line); padding:18px; background:var(--panel);
+    display:flex; flex-direction:column; gap:18px; overflow-y:auto;
+  }
+  .field-group{ border:1px solid var(--line); border-radius:4px; padding:12px; }
+  .field-group h3{ margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:#6b756e;}
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:18px; height:18px; border-radius:50%; background:var(--accent); color:#fff;
+    font-size:10.5px; font-weight:700; margin-right:6px; flex-shrink:0; text-transform:none;
+  }
+  label{ display:block; font-size:12.5px; margin:8px 0 3px; color:#3a423d;}
+  input[type=text], input[type=number], select{
+    width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:3px; font-size:13px;
+    background:#fff; color:var(--ink);
+  }
+  input[type=file]{ font-size:12px; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  button.action{
+    background:var(--accent); color:#fff; border:none; padding:9px 14px; border-radius:3px;
+    font-size:13px; cursor:pointer; font-weight:600;
+  }
+  button.action.alt{ background:var(--accent-2); }
+  button.action.needs-update{ background:var(--accent-2); animation:pulseBtn 1s ease-in-out infinite alternate; }
+  @keyframes pulseBtn{ from{ box-shadow:0 0 0 0 rgba(181,101,29,.5);} to{ box-shadow:0 0 0 6px rgba(181,101,29,0);} }
+  button.action:hover{ filter:brightness(1.08); }
+  button.ghost{
+    background:none; border:1px solid var(--line); padding:6px 10px; border-radius:3px;
+    font-size:12px; cursor:pointer; color:var(--ink);
+  }
+  button.ghost.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .main{ padding:20px 26px; overflow-x:auto;}
+  .view{ display:none; }
+  .view.active{ display:block; }
+  .preview-wrap{ display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
+  canvas{ background:#eee; border:1px solid var(--line); image-rendering: pixelated; }
+  .canvas-box{ border:1px solid var(--line); background:#fff; padding:10px; }
+  .canvas-box h4{ margin:0 0 8px; font-size:12px; color:#6b756e; text-transform:uppercase; letter-spacing:.05em;}
+  table{ border-collapse:collapse; width:100%; font-size:13px; }
+  th,td{ border:1px solid var(--line); padding:5px 8px; text-align:left; }
+  th{ background:#efece3; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:#5b655f;}
+  .swatch{ display:inline-block; width:14px; height:14px; border-radius:2px; vertical-align:-2px; margin-right:6px; border:1px solid rgba(0,0,0,.15);}
+  .stat-cards{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;}
+  .stat-card{ border:1px solid var(--line); background:#fff; padding:10px 16px; border-radius:4px; min-width:120px;}
+  .stat-card .num{ font-size:20px; font-weight:700; }
+  .stat-card .lbl{ font-size:11.5px; color:#6b756e; }
+  .sheet-picker{ display:flex; flex-wrap:wrap; gap:4px; margin:10px 0; max-width:640px;}
+  .sheet-chip{
+    padding:3px 8px; border:1px solid var(--line); font-family:var(--mono); font-size:11.5px;
+    background:#fff; cursor:pointer; border-radius:3px;
+  }
+  .sheet-chip.active{ background:var(--ink); color:#fff; }
+
+  /* ============ 工作圖標示模式卡片 ============ */
+  .mode-cards{ display:flex; gap:10px; margin:10px 0 14px; flex-wrap:wrap; }
+  .mode-card{
+    flex:1; min-width:200px; text-align:left; background:#fff; cursor:pointer;
+    border:1.5px solid var(--line); border-radius:6px; padding:10px 14px;
+  }
+  .mode-card strong{ display:block; font-size:13.5px; margin-bottom:3px; }
+  .mode-card span{ display:block; font-size:11.5px; color:#6b756e; line-height:1.5; }
+  .mode-card.active{ border-color:var(--accent); background:#eef3f0; }
+  .mode-card.active strong{ color:var(--accent); }
+
+  /* ============ 手機底部固定分頁列 ============ */
+  .bottom-tabs{ display:none; }
+  .hint{ font-size:11.5px; color:#7a837c; margin-top:4px;}
+  .toolbar{ display:flex; gap:8px; margin:10px 0 16px; flex-wrap:wrap; }
+  .flex-between{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+  /* ============ 響應式／手機版 ============ */
+  @media (max-width: 900px){
+    header{ padding:14px 16px; }
+    header h1{ font-size:16px; }
+    header .sub{ font-size:11.5px; }
+    header .tabs{ display:none; } /* 手機改用底部固定分頁列 */
+    .layout{ display:block; min-height:auto; }
+    .sidebar{
+      border-right:none; border-bottom:1px solid var(--line);
+      max-height:none; overflow-y:visible;
+    }
+    .main{ padding:14px; overflow-x:hidden; padding-bottom:76px; } /* 留空間給底部分頁列 */
+    .canvas-box{ width:100%; max-width:100%; overflow-x:auto; }
+    canvas{ max-width:100%; height:auto; display:block; }
+    .preview-wrap{ gap:12px; }
+    .preview-wrap .canvas-box{ width:100%; }
+    #sheetLegendBox{ margin-left:0 !important; width:100%; max-width:100%; margin-top:12px; }
+    .stat-card{ min-width:44%; flex:1 1 44%; }
+    .mode-cards{ flex-direction:column; }
+    /* 避免 iOS Safari 對焦輸入框時自動放大畫面 */
+    input[type=text], input[type=number], select, input[type=file]{ font-size:16px; }
+    button.action, button.ghost{ font-size:14px; padding:10px 14px; }
+    table{ font-size:12px; }
+
+    .bottom-tabs{
+      display:flex; position:fixed; left:0; right:0; bottom:0; z-index:500;
+      background:#fff; border-top:1px solid var(--line);
+      box-shadow:0 -2px 10px rgba(0,0,0,.08);
+    }
+    .bottom-tabs .tab-btn{
+      flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+      padding:8px 4px 10px; font-size:11px; font-weight:600; border-bottom:none;
+      color:#6b756e; background:none; border:none;
+    }
+    .bottom-tabs .tab-btn .icon{ font-size:18px; }
+    .bottom-tabs .tab-btn.active{ color:var(--accent-2); }
+  }
+  @media (max-width: 480px){
+    .row2{ grid-template-columns:1fr; }
+    header{ flex-direction:column; align-items:flex-start; }
+  }
+
+  /* ============ 載入中遮罩 ============ */
+  .loading-overlay{
+    position:fixed; inset:0; background:rgba(28,37,33,0.55);
+    display:none; align-items:center; justify-content:center; z-index:9999;
+  }
+  .loading-overlay.active{ display:flex; }
+  .loading-box{
+    background:#fff; border-radius:8px; padding:22px 32px; text-align:center;
+    box-shadow:0 8px 30px rgba(0,0,0,.25); min-width:180px;
+  }
+  .spinner{
+    width:34px; height:34px; margin:0 auto 12px;
+    border:4px solid var(--line); border-top-color:var(--accent);
+    border-radius:50%; animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .loading-text{ font-size:13px; color:var(--ink); font-weight:600; }
+
+  /* ============ 放大鏡（滑鼠靠近馬賽克模擬時） ============ */
+  .canvas-wrap{ position:relative; display:inline-block; }
+  .magnifier-lens{
+    position:absolute; display:none; pointer-events:none; z-index:20;
+    border:3px solid var(--accent-2); border-radius:50%;
+    box-shadow:0 6px 18px rgba(0,0,0,.35); background:#fff;
+  }
+
+  /* ============ 馬賽克模擬放大檢視 Modal ============ */
+  .zoom-modal{
+    position:fixed; inset:0; background:rgba(15,20,18,0.82);
+    display:none; align-items:center; justify-content:center; z-index:9997; padding:16px;
+  }
+  .zoom-modal.active{ display:flex; }
+  .zoom-modal-inner{
+    background:#20291f; padding:14px; border-radius:8px;
+    max-width:96vw; max-height:96vh; display:flex; flex-direction:column; gap:10px;
+  }
+  .zoom-modal-inner .flex-between strong{ color:#fff; font-size:13px; font-weight:600; }
+  .zoom-canvas-scroll{ overflow:auto; max-width:94vw; max-height:82vh; text-align:center; }
+  #cvMosaicLarge{ background:#eee; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">處理中…</div>
+  </div>
+</div>
+
+
+<header>
+  <div>
+    <div class="brand-line">新藝陶瓷 <span class="brand-en">SIN YI CERAMICS</span></div>
+    <h1>馬賽克拼圖模擬系統</h1>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="preview">① 拼貼模擬</button>
+    <button class="tab-btn" data-tab="factory">② 工廠工作圖</button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- ============ SIDEBAR: shared config ============ -->
+  <div class="sidebar">
+
+    <div class="field-group">
+      <h3><span class="step-num">1</span>上傳您的照片</h3>
+      <input type="file" id="imgUpload" accept="image/*">
+      <div class="hint">建議選主體清楚、對比明顯的照片，模擬出來的效果會更好看。</div>
+    </div>
+
+    <div class="field-group">
+      <h3><span class="step-num">2</span>選擇顆粒款式</h3>
+      <label>顆粒形狀</label>
+      <select id="tileShape">
+        <option value="square">正方形馬賽克</option>
+        <option value="circle">圓形馬賽克</option>
+      </select>
+
+      <div id="squareOpts">
+        <label>顆粒大小 (cm)</label>
+        <select id="squareSize">
+          <option value="1.0">1.0</option>
+          <option value="1.5">1.5</option>
+          <option value="1.8" selected>1.8</option>
+          <option value="2.35">2.35</option>
+        </select>
+        <div class="hint" style="margin-top:6px;">顆粒間縫隙：<span id="squareGroutDisplay">0.20</span> cm</div>
+      </div>
+
+      <div id="circleOpts" style="display:none">
+        <label>顆粒大小 (cm)</label>
+        <select id="circleSize">
+          <option value="1.3">1.3</option>
+          <option value="1.9" selected>1.9</option>
+          <option value="2.8">2.8</option>
+        </select>
+        <div class="hint" style="margin-top:6px;">顆粒間縫隙：<span id="circleGroutDisplay">0.20</span> cm</div>
+        <label>排列方式</label>
+        <select id="circleLayout">
+          <option value="grid">整齊排列</option>
+          <option value="hex" selected>交錯排列（蜂巢感）</option>
+        </select>
+      </div>
+
+      <label>縫隙顏色</label>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span id="groutSwatch" class="swatch" style="width:22px; height:22px; border-radius:4px; flex-shrink:0;"></span>
+        <select id="groutColor" style="flex:1;">
+          <option value="#F2F1EC">白色（最常用，百搭）</option>
+          <option value="#A9A6A0" selected>灰色（耐髒，最主流）</option>
+          <option value="#2B2A28">黑色（深色系顆粒常用）</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div class="field-group">
+      <h3><span class="step-num">3</span>您想要的畫作尺寸</h3>
+      <div class="hint" style="margin-top:0;">請填入您希望完成後的畫作寬、高。</div>
+      <div class="row2">
+        <div><label>寬 (cm)</label><input type="number" id="wallW" value="120"></div>
+        <div><label>高 (cm)</label><input type="number" id="wallH" value="90"></div>
+      </div>
+      <div class="hint" id="gridInfo">總顆數：–</div>
+      <button class="ghost" id="btnBestRatio" type="button" style="margin-top:10px; width:100%;">🎯 依畫作比例自動裁切照片</button>
+      <div class="hint">依上面填的寬高比例，自動把照片置中裁成同樣比例，避免模擬出來的畫面被拉伸變形；裁切結果會開啟「調整照片」面板讓您確認或微調。</div>
+    </div>
+
+    <div class="field-group">
+      <h3><span class="step-num">4</span>可選色卡</h3>
+      <div id="paletteSummary" class="hint" style="margin-top:0;">共 <span id="paletteCount">0</span> 種顏色可選</div>
+      <div id="paletteNote" class="hint"></div>
+      <button class="ghost" id="btnShowPalette" style="margin-top:6px;">查看完整色卡</button>
+    </div>
+
+    <button class="action" id="btnRender">產生我的拼貼模擬</button>
+    <div class="hint" id="renderDirtyHint" style="display:none; color:var(--accent-2); font-weight:600; text-align:center;">⚠ 設定已變更，請重新產生看看新效果</div>
+  </div>
+
+  <!-- ============ MAIN: view 1 customer preview ============ -->
+  <div class="main">
+
+    <div class="view active" id="view-preview">
+
+      <div class="canvas-box" id="editorBox" style="display:none; margin-bottom:18px;">
+        <div class="flex-between">
+          <h4>調整照片（裁切／旋轉／亮度對比）</h4>
+          <div>
+            <button class="ghost" id="btnRotateLeft" type="button">↺ 左轉90°</button>
+            <button class="ghost" id="btnRotateRight" type="button">↻ 右轉90°</button>
+            <button class="ghost" id="btnClearCrop" type="button">清除裁切</button>
+            <button class="ghost" id="btnResetEdit" type="button">重設</button>
+          </div>
+        </div>
+        <canvas id="cvEditor" width="420" height="320" style="cursor:crosshair; touch-action:none;"></canvas>
+        <div class="row2" style="margin-top:10px;">
+          <div>
+            <label>微調角度：<span id="rotateFineLabel">0°</span></label>
+            <input type="range" id="rotateFine" min="-45" max="45" value="0" step="1" style="width:100%;">
+          </div>
+          <div></div>
+          <div>
+            <label>亮度：<span id="brightnessLabel">0</span></label>
+            <input type="range" id="brightness" min="-100" max="100" value="0" style="width:100%;">
+          </div>
+          <div>
+            <label>對比：<span id="contrastLabel">0</span></label>
+            <input type="range" id="contrast" min="-100" max="100" value="0" style="width:100%;">
+          </div>
+        </div>
+        <div class="hint">在照片上拖曳滑鼠／手指可框選要保留的範圍；已經有虛線框時，直接按住框內拖曳可以移動整個框的位置（大小、比例不會變）。調整好之後按「套用調整」，會自動幫您重新產生拼貼模擬，不用再另外按一次。</div>
+        <div class="toolbar">
+          <button class="action" id="btnApplyEdit" type="button">套用調整</button>
+        </div>
+      </div>
+
+      <div class="preview-wrap">
+        <div class="canvas-box">
+          <div class="flex-between">
+            <h4>您的照片</h4>
+            <button class="ghost" id="btnToggleEditor" type="button">🖌 調整照片</button>
+          </div>
+          <canvas id="cvOriginal" width="420" height="320"></canvas>
+        </div>
+        <div class="canvas-box">
+          <div class="flex-between">
+            <h4>拼貼模擬效果</h4>
+            <div>
+              <button class="ghost active" id="btn2d" type="button">平面</button>
+              <button class="ghost" id="btn3d" type="button">立體質感</button>
+              <button class="ghost" id="btnZoomMosaic" type="button">🔍 放大看細節</button>
+            </div>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="cvMosaic" width="420" height="320"></canvas>
+            <canvas class="magnifier-lens" id="magnifierLens" width="180" height="180"></canvas>
+          </div>
+          <div class="hint">滑鼠移到圖上會出現放大鏡；點「放大看細節」可以開大圖仔細看。</div>
+        </div>
+      </div>
+
+      <div class="zoom-modal" id="zoomModal">
+        <div class="zoom-modal-inner">
+          <div class="flex-between">
+            <strong>拼貼模擬效果 — 放大檢視</strong>
+            <button class="ghost" id="btnCloseZoom" type="button" style="background:#fff;">✕ 關閉</button>
+          </div>
+          <div class="zoom-canvas-scroll">
+            <canvas id="cvMosaicLarge"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:24px;">需要多少顆粒</h3>
+      <div class="stat-cards" id="bomCards"></div>
+      <div class="table-scroll">
+        <table id="bomTable">
+          <thead><tr><th>色號</th><th>色碼</th><th>需要顆數</th><th>建議備料</th><th>佔比</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ MAIN: view 2 factory worksheet ============ -->
+    <div class="view" id="view-factory">
+      <p class="hint">工作圖以聯網規格切割並標號（欄=字母，列=數字，如 A1、B1、A2…）。每張圖本身就是 1:1 全彩對照圖，師傅可直接依顏色貼磚；下方色號圖例對應貨箱色號，方便取料與核對。工作圖上的色號標記只留數字後兩碼（例如 M06 標成 06、6A02 標成 02），完整色號請以色號圖例／BOM／匯出檔案為準。</p>
+
+      <div class="field-group" style="margin-bottom:16px;">
+        <h3>施工效率設定（僅影響工作圖，客戶端拼貼模擬不受影響）</h3>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="ditherToggleFactory" style="width:auto;">
+          啟用漸層抖動（畫面更細膩，但色號較零碎、施工較費工）
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; margin-top:10px;">
+          <input type="checkbox" id="mergeSimilarToggle" checked style="width:auto;">
+          合併非常相近的色號（用比例較多的色號取代，色塊更大片、更好貼）
+        </label>
+        <div id="mergeThresholdRow" style="margin-top:8px;">
+          <label>合併門檻（色差值，數字越大合併越多）：<span id="mergeThresholdLabel">3</span></label>
+          <input type="range" id="mergeThreshold" min="1" max="8" step="0.5" value="3" style="width:100%;">
+        </div>
+        <div class="hint">兩個設定都會重新計算整張拼貼，套用後請稍候幾秒；預設是關閉漸層抖動＋開啟色號合併，比較適合施工效率優先的情境。</div>
+      </div>
+
+      <div class="mode-cards">
+        <button type="button" class="mode-card active" id="modeFullBtn" data-mode="full">
+          <strong>每顆標色號</strong>
+          <span>每一格都印色號代碼，適合新手或交接情境，畫面較密。</span>
+        </button>
+        <button type="button" class="mode-card" id="modeCheckpointBtn" data-mode="checkpoint">
+          <strong>校驗點模式</strong>
+          <span>只在同色區塊起點標「色號×連續顆數」，適合熟手師傅，畫面較清爽。</span>
+        </button>
+      </div>
+
+      <div class="toolbar">
+        <button class="action" id="btnExportAllPng">匯出全部工作圖 (PNG，逐張)</button>
+        <button class="action alt" id="btnExportPdf">匯出 1:1 施工圖 PDF（全部聯網）</button>
+        <button class="action alt" id="btnExportCsv">匯出生產清單 CSV</button>
+        <button class="action alt" id="btnExportExcel">匯出生產工作表 Excel (.xlsx)</button>
+      </div>
+      <div class="sheet-picker" id="sheetPicker"></div>
+      <div class="canvas-box" style="display:inline-block; vertical-align:top;">
+        <h4 id="sheetTitle">聯網 —</h4>
+        <canvas id="cvSheet" width="500" height="500"></canvas>
+      </div>
+      <div class="canvas-box" id="sheetLegendBox" style="display:inline-block; vertical-align:top; max-width:260px; margin-left:12px;">
+        <h4>本張色號圖例</h4>
+        <table id="sheetLegendTable"><thead><tr><th>色塊</th><th>色號</th><th>顆數</th></tr></thead><tbody></tbody></table>
+        <div class="hint" id="checkpointHint" style="display:none; margin-top:10px;">
+          校驗點模式：只在每段「同色連續區塊」的第一顆標色號＋連續顆數（如 M02×6），代表從這顆起、往右數 6 顆都是同色，中間不逐顆標示；師傅可直接照顏色鋪貼，遇到標籤再核對一次色號與數量即可。
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div>新藝陶瓷有限公司 Sin Yi Ceramics　|　612 嘉義縣太保市嘉太工業區中興路17號</div>
+  <div>Tel：05-2382783　Fax：05-2382192　Email：sinyi2382783@gmail.com</div>
+</footer>
+
+<nav class="bottom-tabs">
+  <button class="tab-btn active" data-tab="preview" type="button">
+    <span class="icon">📋</span>拼貼模擬
+  </button>
+  <button class="tab-btn" data-tab="factory" type="button">
+    <span class="icon">🏭</span>工廠工作圖
+  </button>
+</nav>
+
+<script>
+/* =========================================================================
+ * 0. 公司品牌／聯絡資訊 — 會印在頁首、頁尾與所有匯出檔案（PDF/PNG）上
+ * =======================================================================*/
+const COMPANY_INFO = {
+  name: '新藝陶瓷有限公司 Sin Yi Ceramics',
+  address: '612 嘉義縣太保市嘉太工業區中興路17號',
+  tel: '05-2382783',
+  fax: '05-2382192',
+  email: 'sinyi2382783@gmail.com'
+};
+
+/* =========================================================================
+ * 1. TILE_PALETTES — 真實磁磚色庫資料結構（依「磚形_尺寸」分組）
+ *    以下色號與 hex 值是直接從貴公司提供的馬蒂斯磁磚色卡圖片，用程式取樣
+ *    每個色塊像素後換算而得（非目測），但仍受到掃描/相片色偏、螢幕色域、
+ *    印刷網點等因素影響，僅供模擬預覽使用。正式生產請以公司色票/分光
+ *    測色儀量測之 Lab 值為準；如有官方色名（目前只有色號），也請一併補上
+ *    "name" 欄位。
+ *    來源色卡：
+ *      square_1.0  ← 1.0×1.0cm 施釉／網才
+ *      square_1.5  ← 1.5×1.5cm 施釉．石英／網才（5C81 原稿重複出現兩色相近
+ *                    的色號，已保留原碼，如需請自行核對合併）
+ *      square_1.8  ← 1.8×1.8cm 施釉／網才
+ *      square_2.35 ← 2.35×2.35cm 施釉／網才（另有 2.35 凸面客訂款式）
+ *      circle_1.3  ← 1.3cm 圓形 施釉．變化釉／網才
+ *      circle_1.9  ← 1.9cm 圓形 施釉．石英．變化釉／網才
+ *      circle_2.8  ← 2.8cm 圓形 施釉／網才
+ *    另外，各色卡下方的「花色／漸變釉」拼花樣式（如 M23734、D22347、
+ *    C22566…）為多色隨機混拼樣式，不是單一色號，無法用單一 hex 代表，
+ *    尚未納入本色庫。若要支援這類混拼花磚，建議另外設計一個
+ *    TILE_BLENDS 結構（每個花色代碼對應一組色號＋出現機率），色彩比對
+ *    時改成「從該花色的組成色中隨機/依比例挑選」而不是找單一最接近色。
+ * =======================================================================*/
+const TILE_PALETTES = {
+  "square_1.0": [
+    {code:"M02",name:"M02",hex:"#E5E9EC"},
+    {code:"M05",name:"M05",hex:"#B6CAC7"},
+    {code:"M48",name:"M48",hex:"#A0D58A"},
+    {code:"M15",name:"M15",hex:"#C3CE90"},
+    {code:"M20",name:"M20",hex:"#B2986C"},
+    {code:"M19",name:"M19",hex:"#98643A"},
+    {code:"M21",name:"M21",hex:"#D1C0AC"},
+    {code:"M101",name:"M101",hex:"#9E98AA"},
+    {code:"M10",name:"M10",hex:"#B4B4B4"},
+    {code:"M04",name:"M04",hex:"#8AB3BA"},
+    {code:"M14",name:"M14",hex:"#73A644"},
+    {code:"M46",name:"M46",hex:"#B4BE82"},
+    {code:"M24",name:"M24",hex:"#D6B076"},
+    {code:"M18",name:"M18",hex:"#743001"},
+    {code:"M23",name:"M23",hex:"#CFA89F"},
+    {code:"M32",name:"M32",hex:"#7F7188"},
+    {code:"M42",name:"M42",hex:"#718181"},
+    {code:"M03",name:"M03",hex:"#478CAF"},
+    {code:"M31",name:"M31",hex:"#3A8208"},
+    {code:"M16",name:"M16",hex:"#A7AD5C"},
+    {code:"M35",name:"M35",hex:"#BA601D"},
+    {code:"M17",name:"M17",hex:"#2F040A"},
+    {code:"M27",name:"M27",hex:"#F2ADBE"},
+    {code:"M44",name:"M44",hex:"#3F2B59"},
+    {code:"M43",name:"M43",hex:"#5E6C6F"},
+    {code:"M09",name:"M09",hex:"#969CD4"},
+    {code:"M41",name:"M41",hex:"#69885A"},
+    {code:"M26",name:"M26",hex:"#A1B609"},
+    {code:"M38",name:"M38",hex:"#B3470A"},
+    {code:"M106",name:"M106",hex:"#726450"},
+    {code:"M34",name:"M34",hex:"#A94A54"},
+    {code:"M50",name:"M50",hex:"#17226D"},
+    {code:"M11",name:"M11",hex:"#2C2C2C"},
+    {code:"M08",name:"M08",hex:"#5F7CA0"},
+    {code:"M28",name:"M28",hex:"#305D3A"},
+    {code:"M25",name:"M25",hex:"#B2A50A"},
+    {code:"M13",name:"M13",hex:"#B2473E"},
+    {code:"M107",name:"M107",hex:"#5F4E40"},
+    {code:"M33",name:"M33",hex:"#5E1F20"},
+    {code:"M30",name:"M30",hex:"#060B58"},
+    {code:"M29",name:"M29",hex:"#0A0A0B"},
+    {code:"M07",name:"M07",hex:"#2E4C88"},
+    {code:"M39",name:"M39",hex:"#15312A"},
+    {code:"M12",name:"M12",hex:"#9C760E"},
+    {code:"M37",name:"M37",hex:"#901C17"},
+    {code:"M108",name:"M108",hex:"#41312D"}
+  ],
+  "square_1.5": [
+    {code:"5A02",name:"5A02",hex:"#E5E9EC"},
+    {code:"5A05",name:"5A05",hex:"#B5CAC8"},
+    {code:"5B48",name:"5B48",hex:"#A1D68B"},
+    {code:"5A15",name:"5A15",hex:"#C2CF8F"},
+    {code:"5A20",name:"5A20",hex:"#B0996C"},
+    {code:"5B19",name:"5B19",hex:"#956439"},
+    {code:"5A21",name:"5A21",hex:"#D0C2AB"},
+    {code:"5C101",name:"5C101",hex:"#9F98AA"},
+    {code:"5A10",name:"5A10",hex:"#B6B6B6"},
+    {code:"5A04",name:"5A04",hex:"#8BB3BA"},
+    {code:"5B14",name:"5B14",hex:"#72A743"},
+    {code:"5B46",name:"5B46",hex:"#B4BE82"},
+    {code:"5B24",name:"5B24",hex:"#D7B177"},
+    {code:"5A18",name:"5A18",hex:"#753001"},
+    {code:"5B23",name:"5B23",hex:"#D0A9A0"},
+    {code:"5C32",name:"5C32",hex:"#807188"},
+    {code:"5B42",name:"5B42",hex:"#718183"},
+    {code:"5B03",name:"5B03",hex:"#468CB0"},
+    {code:"5D31",name:"5D31",hex:"#3B8308"},
+    {code:"5A16",name:"5A16",hex:"#A5AE5F"},
+    {code:"5F35",name:"5F35",hex:"#BB601E"},
+    {code:"5A17",name:"5A17",hex:"#2E070B"},
+    {code:"5C27",name:"5C27",hex:"#B6959D"},
+    {code:"5D44",name:"5D44",hex:"#402C5A"},
+    {code:"5B43",name:"5B43",hex:"#5F6D70"},
+    {code:"5A09",name:"5A09",hex:"#949BD3"},
+    {code:"5B41",name:"5B41",hex:"#68895A"},
+    {code:"5B26",name:"5B26",hex:"#A0B70A"},
+    {code:"5G38",name:"5G38",hex:"#B4480A"},
+    {code:"5D106",name:"5D106",hex:"#736450"},
+    {code:"5D34",name:"5D34",hex:"#A94C55"},
+    {code:"5C50",name:"5C50",hex:"#16226D"},
+    {code:"5B11",name:"5B11",hex:"#2C2C2C"},
+    {code:"5A08",name:"5A08",hex:"#617DA1"},
+    {code:"5C28",name:"5C28",hex:"#305E3B"},
+    {code:"5B25",name:"5B25",hex:"#B3A70B"},
+    {code:"5F13",name:"5F13",hex:"#B1483E"},
+    {code:"5D107",name:"5D107",hex:"#5F5041"},
+    {code:"5D33",name:"5D33",hex:"#602021"},
+    {code:"5C30",name:"5C30",hex:"#070F5A"},
+    {code:"5C29",name:"5C29",hex:"#090B0C"},
+    {code:"5B07",name:"5B07",hex:"#2C4E88"},
+    {code:"5C39",name:"5C39",hex:"#14312A"},
+    {code:"5B12",name:"5B12",hex:"#9B770E"},
+    {code:"5G37",name:"5G37",hex:"#911F16"},
+    {code:"5E108",name:"5E108",hex:"#41312D"},
+    {code:"5D51",name:"5D51",hex:"#9FA192"},
+    {code:"5C52",name:"5C52",hex:"#8E8E81"},
+    {code:"5C57",name:"5C57",hex:"#7B8B8A"},
+    {code:"5D58",name:"5D58",hex:"#718288"},
+    {code:"5E59",name:"5E59",hex:"#617884"},
+    {code:"5C60",name:"5C60",hex:"#99867A"},
+    {code:"5C61",name:"5C61",hex:"#90766E"},
+    {code:"5D62",name:"5D62",hex:"#896E69"},
+    {code:"5C54",name:"5C54",hex:"#77776C"},
+    {code:"5D56",name:"5D56",hex:"#666A67"},
+    {code:"5C63",name:"5C63",hex:"#798274"},
+    {code:"5C64",name:"5C64",hex:"#687567"},
+    {code:"5D65",name:"5D65",hex:"#566658"},
+    {code:"5C81",name:"5C81",hex:"#9C8D77"},
+    {code:"5D83",name:"5D83",hex:"#9A7A4B"}
+  ],
+  "square_1.8": [
+    {code:"6A02",name:"6A02",hex:"#E5E9EC"},
+    {code:"6A05",name:"6A05",hex:"#B5CAC8"},
+    {code:"6B48",name:"6B48",hex:"#A7D195"},
+    {code:"6A15",name:"6A15",hex:"#C4CD91"},
+    {code:"6A22",name:"6A22",hex:"#F2E3CF"},
+    {code:"6A21",name:"6A21",hex:"#D2C1AD"},
+    {code:"6B19",name:"6B19",hex:"#98633A"},
+    {code:"6C110",name:"6C110",hex:"#54C0AD"},
+    {code:"6A10",name:"6A10",hex:"#B6B6B6"},
+    {code:"6A04",name:"6A04",hex:"#8DB2B8"},
+    {code:"6B14",name:"6B14",hex:"#74A643"},
+    {code:"6B46",name:"6B46",hex:"#B4BE82"},
+    {code:"6A20",name:"6A20",hex:"#B49870"},
+    {code:"6B23",name:"6B23",hex:"#D0A9A1"},
+    {code:"6A18",name:"6A18",hex:"#753001"},
+    {code:"6C101",name:"6C101",hex:"#A098AB"},
+    {code:"6B42",name:"6B42",hex:"#738083"},
+    {code:"6B03",name:"6B03",hex:"#498CAE"},
+    {code:"6D31",name:"6D31",hex:"#3E8308"},
+    {code:"6A16",name:"6A16",hex:"#A9AE60"},
+    {code:"6B24",name:"6B24",hex:"#D9B077"},
+    {code:"6C27",name:"6C27",hex:"#C493AD"},
+    {code:"6A17",name:"6A17",hex:"#2E040B"},
+    {code:"6C32",name:"6C32",hex:"#826F89"},
+    {code:"6B43",name:"6B43",hex:"#5F6D71"},
+    {code:"6A09",name:"6A09",hex:"#989BD6"},
+    {code:"6B41",name:"6B41",hex:"#6B895C"},
+    {code:"6B26",name:"6B26",hex:"#A1B70B"},
+    {code:"6F35",name:"6F35",hex:"#B9601D"},
+    {code:"6D34",name:"6D34",hex:"#A94B55"},
+    {code:"6D106",name:"6D106",hex:"#766252"},
+    {code:"6D44",name:"6D44",hex:"#402B5A"},
+    {code:"6B11",name:"6B11",hex:"#2C2C2C"},
+    {code:"6A08",name:"6A08",hex:"#627DA1"},
+    {code:"6C28",name:"6C28",hex:"#335E3B"},
+    {code:"6B25",name:"6B25",hex:"#B2A70D"},
+    {code:"6G38",name:"6G38",hex:"#B4460A"},
+    {code:"6F13",name:"6F13",hex:"#B3483F"},
+    {code:"6D107",name:"6D107",hex:"#614F41"},
+    {code:"6C50",name:"6C50",hex:"#16226E"},
+    {code:"6C29",name:"6C29",hex:"#090B0F"},
+    {code:"6B07",name:"6B07",hex:"#2F4D88"},
+    {code:"6C39",name:"6C39",hex:"#17312B"},
+    {code:"6B12",name:"6B12",hex:"#9E770D"},
+    {code:"6D33",name:"6D33",hex:"#622020"},
+    {code:"6G37",name:"6G37",hex:"#911E15"},
+    {code:"6E108",name:"6E108",hex:"#43332B"},
+    {code:"6C30",name:"6C30",hex:"#060A5B"}
+  ],
+  "square_2.35": [
+    {code:"8A02",name:"8A02",hex:"#E5E9EC"},
+    {code:"8A05",name:"8A05",hex:"#B5CAC8"},
+    {code:"8A22",name:"8A22",hex:"#E4D4D5"},
+    {code:"8A20",name:"8A20",hex:"#B4996E"},
+    {code:"8A15",name:"8A15",hex:"#B5D278"},
+    {code:"8B46",name:"8B46",hex:"#DADBA9"},
+    {code:"8A21",name:"8A21",hex:"#D5C2AD"},
+    {code:"8A10",name:"8A10",hex:"#B6B6B6"},
+    {code:"8A04",name:"8A04",hex:"#8EB4B9"},
+    {code:"8B23",name:"8B23",hex:"#D0A9A1"},
+    {code:"8B19",name:"8B19",hex:"#98643A"},
+    {code:"8B48",name:"8B48",hex:"#A9D195"},
+    {code:"8A16",name:"8A16",hex:"#A9AF60"},
+    {code:"8B12",name:"8B12",hex:"#9E760D"},
+    {code:"8B42",name:"8B42",hex:"#738083"},
+    {code:"8B03",name:"8B03",hex:"#4B8CAF"},
+    {code:"8C27",name:"8C27",hex:"#C48E9F"},
+    {code:"8A18",name:"8A18",hex:"#763101"},
+    {code:"8C110",name:"8C110",hex:"#55C0AC"},
+    {code:"8B26",name:"8B26",hex:"#A0B70B"},
+    {code:"8B24",name:"8B24",hex:"#D9B077"},
+    {code:"8B43",name:"8B43",hex:"#5F6D71"},
+    {code:"8A09",name:"8A09",hex:"#989BD5"},
+    {code:"8D34",name:"8D34",hex:"#AA4B56"},
+    {code:"8A17",name:"8A17",hex:"#2E030A"},
+    {code:"8B14",name:"8B14",hex:"#74A644"},
+    {code:"8B25",name:"8B25",hex:"#B2A60D"},
+    {code:"8F35",name:"8F35",hex:"#BB601E"},
+    {code:"8B11",name:"8B11",hex:"#2C2C2C"},
+    {code:"8A08",name:"8A08",hex:"#647EA3"},
+    {code:"8F13",name:"8F13",hex:"#B1483E"},
+    {code:"8D106",name:"8D106",hex:"#766252"},
+    {code:"8D31",name:"8D31",hex:"#3E8306"},
+    {code:"8C101",name:"8C101",hex:"#A298AB"},
+    {code:"8G38",name:"8G38",hex:"#B4470A"},
+    {code:"8C29",name:"8C29",hex:"#0A0C10"},
+    {code:"8B07",name:"8B07",hex:"#304E87"},
+    {code:"8G37",name:"8G37",hex:"#921D15"},
+    {code:"8D107",name:"8D107",hex:"#625042"},
+    {code:"8B41",name:"8B41",hex:"#53995A"},
+    {code:"8C32",name:"8C32",hex:"#827089"},
+    {code:"8C30",name:"8C30",hex:"#06085C"},
+    {code:"8D33",name:"8D33",hex:"#622021"},
+    {code:"8E108",name:"8E108",hex:"#46312D"},
+    {code:"8C28",name:"8C28",hex:"#335D3B"},
+    {code:"8D44",name:"8D44",hex:"#412C5B"}
+  ],
+  "circle_1.3": [
+    {code:"2A02",name:"2A02",hex:"#D1DCEE"},
+    {code:"2B43",name:"2B43",hex:"#7F859F"},
+    {code:"2C29",name:"2C29",hex:"#190C1A"},
+    {code:"2A05",name:"2A05",hex:"#B0C1D1"},
+    {code:"2A04",name:"2A04",hex:"#A0BDD9"},
+    {code:"2B03",name:"2B03",hex:"#63A0D0"},
+    {code:"2A09",name:"2A09",hex:"#9EA9E1"},
+    {code:"2B07",name:"2B07",hex:"#4859A4"},
+    {code:"2C30",name:"2C30",hex:"#131B5F"},
+    {code:"2B14",name:"2B14",hex:"#95B87A"},
+    {code:"2D31",name:"2D31",hex:"#5D9F62"},
+    {code:"2C28",name:"2C28",hex:"#456D64"},
+    {code:"2B46",name:"2B46",hex:"#C8D1CC"},
+    {code:"2B26",name:"2B26",hex:"#BECF49"},
+    {code:"2B25",name:"2B25",hex:"#CA9E45"},
+    {code:"2B24",name:"2B24",hex:"#D4B5A0"},
+    {code:"2F35",name:"2F35",hex:"#D67A3D"},
+    {code:"2G37",name:"2G37",hex:"#9E1715"},
+    {code:"2A21",name:"2A21",hex:"#BEB9BF"},
+    {code:"2B12",name:"2B12",hex:"#C1781F"},
+    {code:"2A18",name:"2A18",hex:"#A14722"},
+    {code:"2C27",name:"2C27",hex:"#CDA8BA"},
+    {code:"2D34",name:"2D34",hex:"#B9576A"},
+    {code:"2D33",name:"2D33",hex:"#8C3842"},
+    {code:"2D51",name:"2D51",hex:"#D5D9E2"},
+    {code:"2C54",name:"2C54",hex:"#81798A"},
+    {code:"2D56",name:"2D56",hex:"#6B6768"},
+    {code:"2E85",name:"2E85",hex:"#454142"},
+    {code:"2H807",name:"2H807",hex:"#669F9E"},
+    {code:"2H808",name:"2H808",hex:"#32807E"},
+    {code:"2H809",name:"2H809",hex:"#0A3F63"},
+    {code:"2H822",name:"2H822",hex:"#102052"},
+    {code:"2H801",name:"2H801",hex:"#B8B199"},
+    {code:"2H810",name:"2H810",hex:"#93975D"},
+    {code:"2H811",name:"2H811",hex:"#49680B"},
+    {code:"2H812",name:"2H812",hex:"#1A3504"}
+  ],
+  "circle_1.9": [
+    {code:"9A02",name:"9A02",hex:"#EFEFEF"},
+    {code:"9A10",name:"9A10",hex:"#CCD7E9"},
+    {code:"9B43",name:"9B43",hex:"#A5B0C3"},
+    {code:"9B11",name:"9B11",hex:"#7B819B"},
+    {code:"9C29",name:"9C29",hex:"#433C4D"},
+    {code:"9C101",name:"9C101",hex:"#160B19"},
+    {code:"9C32",name:"9C32",hex:"#AEA1C2"},
+    {code:"9D44",name:"9D44",hex:"#916E96"},
+    {code:"9A15",name:"9A15",hex:"#C2CFB1"},
+    {code:"9B48",name:"9B48",hex:"#B6CDBA"},
+    {code:"9B14",name:"9B14",hex:"#95B87B"},
+    {code:"9D31",name:"9D31",hex:"#5EA063"},
+    {code:"9C28",name:"9C28",hex:"#466E65"},
+    {code:"9B46",name:"9B46",hex:"#C8D1CC"},
+    {code:"9B26",name:"9B26",hex:"#BECF48"},
+    {code:"9B25",name:"9B25",hex:"#CA9E45"},
+    {code:"9A21",name:"9A21",hex:"#BEB9BF"},
+    {code:"9B23",name:"9B23",hex:"#D0AFBA"},
+    {code:"9B24",name:"9B24",hex:"#D4B5A0"},
+    {code:"9C27",name:"9C27",hex:"#CDA8BA"},
+    {code:"9D34",name:"9D34",hex:"#B9576B"},
+    {code:"9D33",name:"9D33",hex:"#8D3742"},
+    {code:"9F13",name:"9F13",hex:"#CF4B58"},
+    {code:"9G37",name:"9G37",hex:"#6A1B1F"},
+    {code:"9A05",name:"9A05",hex:"#B0C1D1"},
+    {code:"9A04",name:"9A04",hex:"#97BDE6"},
+    {code:"9B03",name:"9B03",hex:"#64A0D0"},
+    {code:"9B07",name:"9B07",hex:"#4959A4"},
+    {code:"9A08",name:"9A08",hex:"#6F77B2"},
+    {code:"9A09",name:"9A09",hex:"#9FA9E1"},
+    {code:"9C30",name:"9C30",hex:"#03024E"},
+    {code:"9F35",name:"9F35",hex:"#D7793C"},
+    {code:"9B12",name:"9B12",hex:"#C1781F"},
+    {code:"9A18",name:"9A18",hex:"#A14722"},
+    {code:"9A17",name:"9A17",hex:"#4D1E21"},
+    {code:"9J95",name:"9J95",hex:"#7C5A24"},
+    {code:"9J98",name:"9J98",hex:"#304746"},
+    {code:"9J120",name:"9J120",hex:"#8B6F6B"},
+    {code:"9J121",name:"9J121",hex:"#49403D"},
+    {code:"9J639",name:"9J639",hex:"#A1A3A0"},
+    {code:"9J640",name:"9J640",hex:"#AA8767"},
+    {code:"9J642",name:"9J642",hex:"#886E5D"},
+    {code:"9J644",name:"9J644",hex:"#433E20"},
+    {code:"9J645",name:"9J645",hex:"#262F28"},
+    {code:"9K99",name:"9K99",hex:"#8A694E"},
+    {code:"9K100",name:"9K100",hex:"#ACA3A0"},
+    {code:"9E85",name:"9E85",hex:"#484446"},
+    {code:"9D51",name:"9D51",hex:"#CDD2DC"},
+    {code:"9C52",name:"9C52",hex:"#B7B7BC"},
+    {code:"9C57",name:"9C57",hex:"#98A8C0"},
+    {code:"9D58",name:"9D58",hex:"#89A1C0"},
+    {code:"9E59",name:"9E59",hex:"#7596C2"},
+    {code:"9C60",name:"9C60",hex:"#B9B3BA"},
+    {code:"9C61",name:"9C61",hex:"#BCA4B1"},
+    {code:"9D62",name:"9D62",hex:"#B18FA4"},
+    {code:"9C54",name:"9C54",hex:"#756D7B"},
+    {code:"9D56",name:"9D56",hex:"#676365"},
+    {code:"9C63",name:"9C63",hex:"#94A1A5"},
+    {code:"9C64",name:"9C64",hex:"#88959B"},
+    {code:"9D65",name:"9D65",hex:"#697B7D"},
+    {code:"9C81",name:"9C81",hex:"#DBC1AC"},
+    {code:"9C82",name:"9C82",hex:"#C2ACA1"},
+    {code:"9D83",name:"9D83",hex:"#BF9C81"}
+  ],
+  "circle_2.8": [
+    {code:"7A02",name:"7A02",hex:"#D0DBED"},
+    {code:"7A10",name:"7A10",hex:"#AAB5C7"},
+    {code:"7B43",name:"7B43",hex:"#7F859F"},
+    {code:"7B11",name:"7B11",hex:"#474052"},
+    {code:"7C29",name:"7C29",hex:"#1A0B1A"},
+    {code:"7C101",name:"7C101",hex:"#B3A6C6"},
+    {code:"7B46",name:"7B46",hex:"#C8D1CC"},
+    {code:"7B150",name:"7B150",hex:"#C2CEB0"},
+    {code:"7B14",name:"7B14",hex:"#95B97B"},
+    {code:"7D31",name:"7D31",hex:"#5D9F62"},
+    {code:"7C28",name:"7C28",hex:"#466E64"},
+    {code:"7C32",name:"7C32",hex:"#96739B"},
+    {code:"7A04",name:"7A04",hex:"#A0BDD9"},
+    {code:"7B03",name:"7B03",hex:"#64A1CF"},
+    {code:"7A09",name:"7A09",hex:"#9EA9E1"},
+    {code:"7B07",name:"7B07",hex:"#4959A5"},
+    {code:"7C30",name:"7C30",hex:"#252867"},
+    {code:"7D44",name:"7D44",hex:"#360E30"},
+    {code:"7C27",name:"7C27",hex:"#CDA8BA"},
+    {code:"7D34",name:"7D34",hex:"#B9576A"},
+    {code:"7D33",name:"7D33",hex:"#8D3742"},
+    {code:"7F13",name:"7F13",hex:"#CF4A57"},
+    {code:"7G37",name:"7G37",hex:"#6A1A1F"},
+    {code:"7A17",name:"7A17",hex:"#4C1E21"},
+    {code:"7B26",name:"7B26",hex:"#BECF49"},
+    {code:"7B25",name:"7B25",hex:"#CA9E45"},
+    {code:"7B12",name:"7B12",hex:"#C1781F"},
+    {code:"7F35",name:"7F35",hex:"#D6793C"},
+    {code:"7A18",name:"7A18",hex:"#A14822"}
+  ]
+};
+
+/* =========================================================================
+ * 2. 磚形規格 — 預留擴充結構
+ * =======================================================================*/
+const TILE_SHAPES = {
+  square: {
+    label:"正方形馬賽克",
+    sizes:[1.0, 1.5, 1.8, 2.35],
+    layout:"grid" // 正方網格
+  },
+  circle: {
+    label:"圓形馬賽克",
+    sizes:[1.3, 1.9, 2.8],
+    layout:"grid" // 或 "hex"，由 UI 切換
+  }
+};
+
+// 依「磚形+尺寸標籤」查對應色庫的 key，例如 square + "1.8" -> "square_1.8"
+// 注意：sizeLabel 必須是原始字串（例如 "1.0"），不能是數字轉字串的結果——
+// 數字 1.0 轉字串會變成 "1"，會對不上色庫的 key "square_1.0"。
+function paletteKeyFor(shapeKey, sizeLabel){
+  return `${shapeKey}_${sizeLabel}`;
+}
+function getPaletteFor(shapeKey, sizeLabel){
+  return TILE_PALETTES[paletteKeyFor(shapeKey, sizeLabel)] || null;
+}
+
+/* =========================================================================
+ * MESH_SPECS — 各磚形/尺寸「官方聯網規格」，直接取自馬蒂斯磁磚色卡上印的
+ * 單張尺寸與顆粒排數（例如 1.0cm 色卡標示「30cm(25顆) / 25x25」）。
+ * 有這筆資料的規格，聯網張數／座標切割一律用這裡的真實顆粒排數計算，
+ * 不再用「單片聯網邊長 ÷ 磚距」去估算——因為官方聯網不一定是整數顆的
+ * 邊長（例如 1.8cm 磚的聯網其實是 28×28cm，2.35cm 是 29.15×29.15cm，
+ * 不是預設想像的 30×30cm），用估算的話張數/邊界會跟實際出貨的聯網對不上。
+ * 沒有列在這裡的規格（例如未來新增的磚形），才會退回用側邊欄「單片聯網
+ * 邊長」去估算，並在畫面上標示「估算」提醒使用者。
+ * =======================================================================*/
+const MESH_SPECS = {
+  "square_1.0":  { sheetW:30,    sheetH:30,    cols:25, rows:25 },
+  "square_1.5":  { sheetW:30,    sheetH:30,    cols:17, rows:17 },
+  "square_1.8":  { sheetW:28,    sheetH:28,    cols:14, rows:14 },
+  "square_2.35": { sheetW:29.15, sheetH:29.15, cols:11, rows:11 },
+  "circle_1.3":  { sheetW:28.5,  sheetH:28.6,  cols:19, rows:22 },
+  "circle_1.9":  { sheetW:29.5,  sheetH:29.5,  cols:14, rows:16 },
+  "circle_2.8":  { sheetW:27,    sheetH:28,    cols:9,  rows:10 },
+};
+function getMeshSpec(shapeKey, sizeLabel){
+  return MESH_SPECS[paletteKeyFor(shapeKey, sizeLabel)] || null;
+}
+// 找不到官方聯網資料時的退回預設值——公司統一用 30cm 單片聯網，不開放
+// 客戶調整，只在「這個磚形/尺寸還沒建檔」時當保底數字用。
+const DEFAULT_MESH_FALLBACK_CM = 30;
+
+/* =========================================================================
+ * GROUT_SPECS — 各磚形/尺寸的溝縫寬度（cm），取自色卡上印的「溝縫(mm)」
+ * 欄位（1.0cm/1.8cm/圓形皆為 2mm，1.5cm 為 2.65mm，2.35cm 為 3mm）。
+ * 這是公司固定規格，不開放客戶調整，只顯示讓客戶知道即可。
+ * =======================================================================*/
+const GROUT_SPECS = {
+  "square_1.0":  0.20,
+  "square_1.5":  0.265,
+  "square_1.8":  0.20,
+  "square_2.35": 0.30,
+  "circle_1.3":  0.20,
+  "circle_1.9":  0.20,
+  "circle_2.8":  0.20,
+};
+function getGroutCm(shapeKey, sizeLabel){
+  const key = paletteKeyFor(shapeKey, sizeLabel);
+  return GROUT_SPECS[key] !== undefined ? GROUT_SPECS[key] : 0.20;
+}
+
+/* =========================================================================
+ * 3. 色彩科學：sRGB -> Lab -> CIEDE2000
+ * =======================================================================*/
+function hexToRgb(hex){
+  hex = hex.replace('#','');
+  if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+  const int = parseInt(hex,16);
+  return [(int>>16)&255,(int>>8)&255,int&255];
+}
+
+function rgbToLab(r,g,b){
+  let [R,G,B] = [r/255,g/255,b/255].map(v=>{
+    return v>0.04045 ? Math.pow((v+0.055)/1.055,2.4) : v/12.92;
+  });
+  let X = R*0.4124564+G*0.3575761+B*0.1804375;
+  let Y = R*0.2126729+G*0.7151522+B*0.0721750;
+  let Z = R*0.0193339+G*0.1191920+B*0.9503041;
+  X/=0.95047; Y/=1.0; Z/=1.08883;
+  const f = t => t>0.008856452 ? Math.cbrt(t) : (7.787037*t + 16/116);
+  const fx=f(X), fy=f(Y), fz=f(Z);
+  return [116*fy-16, 500*(fx-fy), 200*(fy-fz)];
+}
+
+// CIEDE2000 色差公式（標準實作）
+function deltaE00(lab1, lab2){
+  const [L1,a1,b1] = lab1, [L2,a2,b2] = lab2;
+  const kL=1,kC=1,kH=1;
+  const C1 = Math.sqrt(a1*a1+b1*b1);
+  const C2 = Math.sqrt(a2*a2+b2*b2);
+  const Cbar = (C1+C2)/2;
+  const G = 0.5*(1-Math.sqrt(Math.pow(Cbar,7)/(Math.pow(Cbar,7)+Math.pow(25,7))));
+  const a1p = a1*(1+G), a2p = a2*(1+G);
+  const C1p = Math.sqrt(a1p*a1p+b1*b1);
+  const C2p = Math.sqrt(a2p*a2p+b2*b2);
+  const h1p = (Math.atan2(b1,a1p)*180/Math.PI + 360) % 360;
+  const h2p = (Math.atan2(b2,a2p)*180/Math.PI + 360) % 360;
+
+  const dLp = L2-L1;
+  const dCp = C2p-C1p;
+  let dhp;
+  if(C1p*C2p===0) dhp=0;
+  else if(Math.abs(h2p-h1p)<=180) dhp = h2p-h1p;
+  else if(h2p-h1p>180) dhp = h2p-h1p-360;
+  else dhp = h2p-h1p+360;
+  const dHp = 2*Math.sqrt(C1p*C2p)*Math.sin((dhp*Math.PI/180)/2);
+
+  const Lbarp = (L1+L2)/2;
+  const Cbarp = (C1p+C2p)/2;
+  let hbarp;
+  if(C1p*C2p===0) hbarp = h1p+h2p;
+  else if(Math.abs(h1p-h2p)<=180) hbarp = (h1p+h2p)/2;
+  else if(h1p+h2p<360) hbarp = (h1p+h2p+360)/2;
+  else hbarp = (h1p+h2p-360)/2;
+
+  const T = 1 - 0.17*Math.cos((hbarp-30)*Math.PI/180)
+               + 0.24*Math.cos((2*hbarp)*Math.PI/180)
+               + 0.32*Math.cos((3*hbarp+6)*Math.PI/180)
+               - 0.20*Math.cos((4*hbarp-63)*Math.PI/180);
+
+  const dTheta = 30*Math.exp(-Math.pow((hbarp-275)/25,2));
+  const Rc = 2*Math.sqrt(Math.pow(Cbarp,7)/(Math.pow(Cbarp,7)+Math.pow(25,7)));
+  const Sl = 1 + (0.015*Math.pow(Lbarp-50,2))/Math.sqrt(20+Math.pow(Lbarp-50,2));
+  const Sc = 1 + 0.045*Cbarp;
+  const Sh = 1 + 0.015*Cbarp*T;
+  const Rt = -Math.sin(2*dTheta*Math.PI/180)*Rc;
+
+  return Math.sqrt(
+    Math.pow(dLp/(kL*Sl),2) +
+    Math.pow(dCp/(kC*Sc),2) +
+    Math.pow(dHp/(kH*Sh),2) +
+    Rt*(dCp/(kC*Sc))*(dHp/(kH*Sh))
+  );
+}
+
+// 每個「磚形+尺寸」色庫的 Lab 值快取，避免每次取樣都重算
+const paletteLabCache = {};
+function getPaletteLab(shapeKey, sizeLabel){
+  const key = paletteKeyFor(shapeKey, sizeLabel);
+  if(paletteLabCache[key]) return paletteLabCache[key];
+  const pal = getPaletteFor(shapeKey, sizeLabel);
+  if(!pal) return null;
+  const withLab = pal.map(p=>{
+    const [r,g,b] = hexToRgb(p.hex);
+    return { ...p, lab: rgbToLab(r,g,b) };
+  });
+  paletteLabCache[key] = withLab;
+  return withLab;
+}
+
+function nearestTile(r,g,b, paletteLab){
+  const lab = rgbToLab(r,g,b);
+  let best=null, bestD=Infinity;
+  for(const p of paletteLab){
+    const d = deltaE00(lab, p.lab);
+    if(d<bestD){ bestD=d; best=p; }
+  }
+  return best;
+}
+
+/* =========================================================================
+ * 4. 網格計算：拼圖畫尺寸 + 磚規格 -> 行列數
+ * =======================================================================*/
+function computeGrid(wallWcm, wallHcm, shapeKey, sizeCm, groutCm){
+  const pitch = sizeCm + groutCm; // 每顆磚（含縫）的中心距
+  const cols = Math.max(1, Math.floor(wallWcm / pitch));
+  const rows = Math.max(1, Math.floor(wallHcm / pitch));
+  return { cols, rows, pitch, sizeCm, groutCm };
+}
+
+/* =========================================================================
+ * 5. 圖片取樣 -> 色號矩陣
+ * =======================================================================*/
+function sampleImageToTileMatrix(img, cols, rows, paletteLab){
+  const off = document.createElement('canvas');
+  off.width = cols; off.height = rows;
+  const octx = off.getContext('2d');
+  // 直接縮放繪製：等同於做區塊平均取樣（瀏覽器的縮放採雙線性/雙三次濾波）
+  octx.imageSmoothingEnabled = true;
+  octx.drawImage(img, 0, 0, cols, rows);
+  const data = octx.getImageData(0,0,cols,rows).data;
+
+  const matrix = [];
+  for(let y=0;y<rows;y++){
+    const row=[];
+    for(let x=0;x<cols;x++){
+      const i = (y*cols+x)*4;
+      const tile = nearestTile(data[i], data[i+1], data[i+2], paletteLab);
+      row.push(tile);
+    }
+    matrix.push(row);
+  }
+  return matrix;
+}
+
+/* Floyd–Steinberg 誤差擴散版本：讓漸層/陰影區域用多個相近色號交錯呈現，
+ * 而不是整片同一色號的平塗色塊。原理：每一格比色後，把「原始顏色－選中
+ * 磁磚顏色」的誤差，依標準 Floyd–Steinberg 權重（右7/16、左下3/16、
+ * 下5/16、右下1/16）加回鄰近尚未處理的像素，讓色差累積、逐步被鄰格的
+ * 選色「補償」回來，視覺上就會出現這兩張參考成品照裡那種細膩漸層感。
+ * 取捨：同一小塊區域內色號會變得比較零碎（校驗點模式的連續色塊會變短），
+ * 換取漸層更平滑；如果偏好大面積同色、方便施工，可在畫面上關閉此選項。 */
+function sampleImageToTileMatrixDithered(img, cols, rows, paletteLab){
+  const off = document.createElement('canvas');
+  off.width = cols; off.height = rows;
+  const octx = off.getContext('2d');
+  octx.imageSmoothingEnabled = true;
+  octx.drawImage(img, 0, 0, cols, rows);
+  const data = octx.getImageData(0,0,cols,rows).data;
+
+  // 用浮點緩衝存每格的 RGB，讓擴散的誤差可以暫時超出 0-255 範圍再累加
+  const buf = new Float32Array(cols*rows*3);
+  for(let p=0; p<cols*rows; p++){
+    buf[p*3]   = data[p*4];
+    buf[p*3+1] = data[p*4+1];
+    buf[p*3+2] = data[p*4+2];
+  }
+  const at = (x,y)=> (y*cols+x)*3;
+  function addError(x,y,er,eg,eb,frac){
+    if(x<0||x>=cols||y<0||y>=rows) return;
+    const i = at(x,y);
+    buf[i]   += er*frac;
+    buf[i+1] += eg*frac;
+    buf[i+2] += eb*frac;
+  }
+
+  const matrix = [];
+  for(let y=0;y<rows;y++) matrix.push(new Array(cols));
+
+  for(let y=0;y<rows;y++){
+    for(let x=0;x<cols;x++){
+      const i = at(x,y);
+      const r = Math.min(255, Math.max(0, buf[i]));
+      const g = Math.min(255, Math.max(0, buf[i+1]));
+      const b = Math.min(255, Math.max(0, buf[i+2]));
+      const tile = nearestTile(r, g, b, paletteLab);
+      matrix[y][x] = tile;
+      const [tr,tg,tb] = hexToRgb(tile.hex);
+      const er = r-tr, eg = g-tg, eb = b-tb;
+      addError(x+1, y,   er, eg, eb, 7/16);
+      addError(x-1, y+1, er, eg, eb, 3/16);
+      addError(x,   y+1, er, eg, eb, 5/16);
+      addError(x+1, y+1, er, eg, eb, 1/16);
+    }
+  }
+  return matrix;
+}
+
+/* 施工效率後處理：把「非常相近」的色號合併成同一個（優先合併進顆數比較多
+ * 的那個），讓同一片區域盡量用同一色號鋪貼，減少師傅逐顆換色的次數。
+ * 只在工廠工作圖頁面套用，不影響客戶端看到的拼貼模擬用色邏輯本身（這裡
+ * 是對「已經比對完成的色號矩陣」做二次簡化，不是重新做一次色差比對）。
+ *
+ * 演算法：每次找目前顆數最少的色號，在其餘色號裡找「色差最小、且顆數不
+ * 比自己少」的對象，如果色差在門檻以內就合併過去（矩陣裡的格子全部換成
+ * 該色號），重複直到找不到可合併的為止。deltaEThreshold 建議 1~8，數字
+ * 越大代表容忍的色差越大、合併越積極。
+ */
+function mergeSimilarColors(matrix, paletteLab, deltaEThreshold){
+  if(!deltaEThreshold || deltaEThreshold<=0) return matrix;
+
+  const info = {}; // code -> { count, tile, lab }
+  for(const row of matrix){
+    for(const t of row){
+      if(!info[t.code]){
+        const labEntry = paletteLab.find(p=>p.code===t.code);
+        const lab = labEntry ? labEntry.lab : rgbToLab(...hexToRgb(t.hex));
+        info[t.code] = { count:0, tile:t, lab };
+      }
+      info[t.code].count++;
+    }
+  }
+
+  const mapping = {}; // oldCode -> finalCode，初始每個色號對應自己
+  Object.keys(info).forEach(c=> mapping[c]=c);
+
+  let changed = true;
+  while(changed){
+    changed = false;
+    const alive = Object.keys(mapping).filter(c=>mapping[c]===c);
+    if(alive.length<=1) break;
+    alive.sort((a,b)=> info[a].count - info[b].count); // 最少顆數的優先被合併掉
+    for(const c of alive){
+      let best=null, bestD=Infinity;
+      for(const o of alive){
+        if(o===c) continue;
+        if(info[o].count < info[c].count) continue; // 只往「顆數比較多或相等」的方向合併
+        const d = deltaE00(info[c].lab, info[o].lab);
+        if(d<bestD){ bestD=d; best=o; }
+      }
+      if(best && bestD<=deltaEThreshold){
+        mapping[c] = best;
+        info[best].count += info[c].count;
+        changed = true;
+        break; // 存活色號集合變了，重新掃一輪
+      }
+    }
+  }
+
+  function resolve(c){
+    const seen = new Set();
+    while(mapping[c]!==c){
+      if(seen.has(c)) break; // 保險：避免萬一出現循環參照
+      seen.add(c);
+      c = mapping[c];
+    }
+    return c;
+  }
+
+  const finalTile = {};
+  Object.keys(info).forEach(c=>{
+    const f = resolve(c);
+    if(!finalTile[f]) finalTile[f] = info[f].tile;
+  });
+
+  for(const row of matrix){
+    for(let x=0;x<row.length;x++){
+      const f = resolve(row[x].code);
+      if(f!==row[x].code) row[x] = finalTile[f];
+    }
+  }
+  return matrix;
+}
+
+/* =========================================================================
+ * 6. 應用狀態
+ * =======================================================================*/
+const state = {
+  img: null,            // 實際用於馬賽克運算的圖片（可能是套用調整後的版本）
+  originalImg: null,    // 使用者原始上傳的圖片，永不修改，編輯器一律以此為來源
+  matrix: null,        // [row][col] -> palette entry {code,name,hex}
+  grid: null,           // {cols, rows, pitch, sizeCm, groutCm}
+  shapeKey: 'square',
+  layoutMode: 'grid',   // grid | hex (for circle)
+  groutColor: '#A9A6A0',
+  render3d: false,
+  meshSizeCm: 30,
+  sheets: null,         // computed on demand
+  worksheetMode: 'full', // 'full' | 'checkpoint'
+  dirty: false,          // true = 設定已變更但尚未重新產生預覽
+  // 圖片編輯器狀態
+  editRotationBase: 0,   // 0/90/180/270（旋轉按鈕）
+  editRotationFine: 0,   // -45~45（微調滑桿），與 base 相加為總旋轉角度
+  editCropRect: null,    // {x,y,w,h}，座標系為「旋轉後圖片」的原始像素
+  editBrightness: 0,     // -100~100
+  editContrast: 0,       // -100~100
+  editDisplayScale: 1,   // cvEditor 顯示尺寸 / 旋轉後圖片原始尺寸
+  editDragStart: null,
+  editDragMode: null,    // null | 'draw'（框選新範圍） | 'move'（拖曳既有框）
+  editDragOffset: null,  // 'move' 模式下，記錄手指/游標抓住框的哪個相對位置
+};
+
+/* =========================================================================
+ * 7. UI 綁定
+ * =======================================================================*/
+const $ = id => document.getElementById(id);
+
+function showLoading(text){
+  $('loadingText').textContent = text || '處理中…';
+  $('loadingOverlay').classList.add('active');
+}
+function hideLoading(){
+  $('loadingOverlay').classList.remove('active');
+}
+// 讓瀏覽器先畫出遮罩再跑重運算：heavy JS 是同步阻塞的，直接呼叫的話畫面
+// 會先卡住才顯示 loading，所以用 setTimeout(...,20) 讓瀏覽器先重繪一次。
+function runHeavy(loadingText, fn){
+  showLoading(loadingText);
+  setTimeout(()=>{
+    try{ fn(); }
+    finally{ hideLoading(); }
+  }, 20);
+}
+// 給需要 await 的匯出流程用（例如 ExcelJS 產生檔案是非同步的）
+function runHeavyAsync(loadingText, asyncFn){
+  showLoading(loadingText);
+  setTimeout(async ()=>{
+    try{ await asyncFn(); }
+    catch(err){ console.error(err); alert('匯出失敗，請稍後再試或改用其他匯出格式。'); }
+    finally{ hideLoading(); }
+  }, 20);
+}
+
+$('tileShape').addEventListener('change', e=>{
+  state.shapeKey = e.target.value;
+  $('squareOpts').style.display = state.shapeKey==='square' ? 'block':'none';
+  $('circleOpts').style.display = state.shapeKey==='circle' ? 'block':'none';
+  updateGridInfo();
+});
+['squareSize','circleSize','wallW','wallH','circleLayout']
+  .forEach(id => $(id).addEventListener('input', updateGridInfo));
+
+$('groutColor').addEventListener('change', e=>{
+  state.groutColor = e.target.value;
+  $('groutSwatch').style.background = state.groutColor;
+  // 濾縫色只影響畫面顏色，不需要重新跑色差比對，直接重繪目前結果即可
+  if(state.matrix) drawMosaicCanvas('cvMosaic',420,320);
+});
+$('groutSwatch').style.background = $('groutColor').value;
+
+function currentSpec(){
+  // sizeLabel 保留 <select> 的原始字串（如 "1.0"、"2.35"），用來對應
+  // TILE_PALETTES 的 key；sizeCm 是轉成數字後用於實際運算（網格、面積等）。
+  // 這兩者刻意分開：數字 1.0 經過字串化會變成 "1"（小數點被吃掉），
+  // 若拿 sizeCm 去拼色庫 key 會找不到 "square_1.0"，這正是先前的 bug 成因。
+  // 溝縫寬度不再讓使用者輸入，一律用 GROUT_SPECS 依尺寸固定帶入。
+  if(state.shapeKey==='square'){
+    const label = $('squareSize').value;
+    return { sizeCm: parseFloat(label), sizeLabel: label, groutCm: getGroutCm('square', label) };
+  } else {
+    const label = $('circleSize').value;
+    return { sizeCm: parseFloat(label), sizeLabel: label, groutCm: getGroutCm('circle', label) };
+  }
+}
+
+function updateGridInfo(){
+  const spec = currentSpec();
+  const wallW = parseFloat($('wallW').value)||0;
+  const wallH = parseFloat($('wallH').value)||0;
+  const g = computeGrid(wallW, wallH, state.shapeKey, spec.sizeCm, spec.groutCm);
+  $('gridInfo').textContent = `這張畫大約需要 ${g.rows*g.cols} 顆顆粒`;
+  state.layoutMode = $('circleLayout') ? $('circleLayout').value : 'grid';
+  state.meshSizeCm = DEFAULT_MESH_FALLBACK_CM; // 固定 30cm，不開放使用者調整
+  $('squareGroutDisplay').textContent = getGroutCm('square', $('squareSize').value).toFixed(2);
+  $('circleGroutDisplay').textContent = getGroutCm('circle', $('circleSize').value).toFixed(2);
+  updatePaletteSummary();
+  markSettingsDirty();
+  return g;
+}
+updateGridInfo();
+
+// 設定變更提示：已經產生過預覽之後，只要再改設定就提醒使用者要重新產生，
+// 避免使用者以為畫面會自動更新、或以為系統沒反應。
+function markSettingsDirty(){
+  if(!state.matrix) return; // 還沒產生過預覽，不用提示
+  state.dirty = true;
+  $('btnRender').classList.add('needs-update');
+  $('renderDirtyHint').style.display = 'block';
+}
+function clearSettingsDirty(){
+  state.dirty = false;
+  $('btnRender').classList.remove('needs-update');
+  $('renderDirtyHint').style.display = 'none';
+}
+
+function updatePaletteSummary(){
+  const spec = currentSpec();
+  const pal = getPaletteFor(state.shapeKey, spec.sizeLabel);
+  $('paletteCount').textContent = pal ? pal.length : 0;
+  const noteEl = document.getElementById('paletteNote');
+  if(!pal){
+    if(noteEl) noteEl.textContent = `⚠ 這個款式目前還沒有可選顏色，麻煩換一個規格試試`;
+  } else if(noteEl){
+    noteEl.textContent = `顏色僅供參考，實際成品以馬蒂斯磁磚實品為主。`;
+  }
+}
+
+$('btnShowPalette').addEventListener('click', ()=>{
+  const spec = currentSpec();
+  const pal = getPaletteFor(state.shapeKey, spec.sizeLabel) || [];
+  const w = window.open('', '_blank', 'width=420,height=600');
+  w.document.write(`<h3 style="font-family:sans-serif">可選顏色（共 ${pal.length} 色）</h3><table style="font-family:sans-serif;border-collapse:collapse" border="1" cellpadding="6">`
+    + '<tr><th>色塊</th><th>色號</th></tr>'
+    + pal.map(p=>`<tr><td style="background:${p.hex};width:24px"></td><td>${p.code}</td></tr>`).join('')
+    + '</table>');
+});
+
+
+$('imgUpload').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  showLoading('讀取圖片中…');
+  const img = new Image();
+  img.onload = ()=>{
+    state.originalImg = img;
+    state.img = img;
+    resetEditState();
+    drawOriginal(img);
+    hideLoading();
+  };
+  img.onerror = ()=>{ hideLoading(); alert('圖片讀取失敗，請換一張再試。'); };
+  img.src = URL.createObjectURL(file);
+});
+
+function drawOriginal(img){
+  const cv = $('cvOriginal');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const scale = Math.min(cv.width/img.width, cv.height/img.height);
+  const w = img.width*scale, h = img.height*scale;
+  ctx.drawImage(img, (cv.width-w)/2, (cv.height-h)/2, w, h);
+}
+
+/* =========================================================================
+ * 圖片編輯器：旋轉／裁切／亮度對比（在套用馬賽克映射之前先調整構圖）
+ * =======================================================================*/
+function resetEditState(){
+  state.editRotationBase = 0;
+  state.editRotationFine = 0;
+  state.editCropRect = null;
+  state.editBrightness = 0;
+  state.editContrast = 0;
+  $('rotateFine').value = 0;   $('rotateFineLabel').textContent = '0°';
+  $('brightness').value = 0;   $('brightnessLabel').textContent = '0';
+  $('contrast').value = 0;     $('contrastLabel').textContent = '0';
+  // 面板預設收合，不佔版面；使用者按「調整圖片」才展開（見 btnToggleEditor）
+  renderEditorPreview();
+}
+
+$('btnToggleEditor').addEventListener('click', ()=>{
+  if(!state.originalImg){ alert('請先上傳圖片'); return; }
+  const box = $('editorBox');
+  const willShow = box.style.display === 'none' || !box.style.display;
+  box.style.display = willShow ? 'block' : 'none';
+  $('btnToggleEditor').textContent = willShow ? '收合調整面板 ▲' : '🖌 調整圖片';
+  if(willShow) renderEditorPreview();
+});
+
+function brightnessContrastFilterString(){
+  return `brightness(${100+state.editBrightness}%) contrast(${100+state.editContrast}%)`;
+}
+
+// 把來源圖片旋轉 deg 度，畫在一個剛好容納旋轉後範圍的畫布上（周圍留白）
+function buildRotatedCanvas(img, deg){
+  const rad = deg*Math.PI/180;
+  const w = img.width, h = img.height;
+  const newW = Math.round(Math.abs(w*Math.cos(rad)) + Math.abs(h*Math.sin(rad)));
+  const newH = Math.round(Math.abs(w*Math.sin(rad)) + Math.abs(h*Math.cos(rad)));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1,newW); c.height = Math.max(1,newH);
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0,0,c.width,c.height);
+  ctx.translate(c.width/2, c.height/2);
+  ctx.rotate(rad);
+  ctx.drawImage(img, -w/2, -h/2);
+  return c;
+}
+
+function renderEditorPreview(){
+  if(!state.originalImg) return;
+  const totalRot = state.editRotationBase + state.editRotationFine;
+  const rotated = buildRotatedCanvas(state.originalImg, totalRot);
+  state._rotatedCanvas = rotated;
+
+  const cv = $('cvEditor');
+  const maxW = 420, maxH = 320;
+  const scale = Math.min(maxW/rotated.width, maxH/rotated.height);
+  state.editDisplayScale = scale;
+  cv.width = Math.max(1, Math.round(rotated.width*scale));
+  cv.height = Math.max(1, Math.round(rotated.height*scale));
+
+  const ctx = cv.getContext('2d');
+  ctx.filter = brightnessContrastFilterString();
+  ctx.drawImage(rotated, 0, 0, cv.width, cv.height);
+  ctx.filter = 'none';
+
+  if(state.editCropRect){
+    const r = state.editCropRect;
+    const rx=r.x*scale, ry=r.y*scale, rw=r.w*scale, rh=r.h*scale;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0,0,cv.width, ry);
+    ctx.fillRect(0, ry+rh, cv.width, cv.height-(ry+rh));
+    ctx.fillRect(0, ry, rx, rh);
+    ctx.fillRect(rx+rw, ry, cv.width-(rx+rw), rh);
+    ctx.strokeStyle = 'var(--accent-2)';
+    ctx.strokeStyle = '#b5651d';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6,4]);
+    ctx.strokeRect(rx, ry, rw, rh);
+    ctx.setLineDash([]);
+  }
+}
+
+function editorPointerPos(e){
+  const cv = $('cvEditor');
+  const rect = cv.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: (clientX-rect.left) * (cv.width/rect.width),
+    y: (clientY-rect.top) * (cv.height/rect.height),
+  };
+}
+
+// 判斷目前這個顯示座標（display px）是否落在既有裁切框裡面
+function pointInCropRect(p){
+  if(!state.editCropRect) return false;
+  const scale = state.editDisplayScale;
+  const r = state.editCropRect;
+  const rx=r.x*scale, ry=r.y*scale, rw=r.w*scale, rh=r.h*scale;
+  return p.x>=rx && p.x<=rx+rw && p.y>=ry && p.y<=ry+rh;
+}
+
+$('cvEditor').addEventListener('pointerdown', e=>{
+  const p = editorPointerPos(e);
+  if(pointInCropRect(p)){
+    // 點在既有的虛線框裡面 → 移動整個框（大小/比例不變，只改位置）
+    const scale = state.editDisplayScale;
+    const r = state.editCropRect;
+    state.editDragMode = 'move';
+    state.editDragOffset = { dx: p.x/scale - r.x, dy: p.y/scale - r.y };
+    $('cvEditor').style.cursor = 'move';
+  } else {
+    // 點在框外 → 照舊，重新框選一個新的裁切範圍
+    state.editDragMode = 'draw';
+    state.editDragStart = p;
+  }
+});
+$('cvEditor').addEventListener('pointermove', e=>{
+  if(!state.editDragMode) return;
+  const p = editorPointerPos(e);
+  const scale = state.editDisplayScale;
+
+  if(state.editDragMode === 'move' && state.editCropRect && state._rotatedCanvas){
+    const r = state.editCropRect;
+    const rotW = state._rotatedCanvas.width, rotH = state._rotatedCanvas.height;
+    let newX = p.x/scale - state.editDragOffset.dx;
+    let newY = p.y/scale - state.editDragOffset.dy;
+    newX = Math.max(0, Math.min(rotW - r.w, newX));
+    newY = Math.max(0, Math.min(rotH - r.h, newY));
+    r.x = newX; r.y = newY;
+    renderEditorPreview();
+    return;
+  }
+
+  if(state.editDragMode === 'draw' && state.editDragStart){
+    const x0 = Math.min(state.editDragStart.x, p.x), y0 = Math.min(state.editDragStart.y, p.y);
+    const w = Math.abs(p.x-state.editDragStart.x), h = Math.abs(p.y-state.editDragStart.y);
+    state.editCropRect = { x:x0/scale, y:y0/scale, w:w/scale, h:h/scale };
+    renderEditorPreview();
+  }
+});
+window.addEventListener('pointerup', ()=>{
+  state.editDragMode = null;
+  state.editDragStart = null;
+  $('cvEditor').style.cursor = 'crosshair';
+});
+
+$('btnRotateLeft').addEventListener('click', ()=>{
+  state.editRotationBase = (state.editRotationBase - 90 + 360) % 360;
+  state.editCropRect = null; // 旋轉基準改變，先前的裁切座標系已不適用
+  renderEditorPreview();
+});
+$('btnRotateRight').addEventListener('click', ()=>{
+  state.editRotationBase = (state.editRotationBase + 90) % 360;
+  state.editCropRect = null;
+  renderEditorPreview();
+});
+$('rotateFine').addEventListener('input', e=>{
+  state.editRotationFine = parseFloat(e.target.value);
+  $('rotateFineLabel').textContent = state.editRotationFine + '°';
+  state.editCropRect = null;
+  renderEditorPreview();
+});
+$('brightness').addEventListener('input', e=>{
+  state.editBrightness = parseFloat(e.target.value);
+  $('brightnessLabel').textContent = state.editBrightness;
+  renderEditorPreview();
+});
+$('contrast').addEventListener('input', e=>{
+  state.editContrast = parseFloat(e.target.value);
+  $('contrastLabel').textContent = state.editContrast;
+  renderEditorPreview();
+});
+$('btnClearCrop').addEventListener('click', ()=>{
+  state.editCropRect = null;
+  renderEditorPreview();
+});
+$('btnResetEdit').addEventListener('click', ()=>{
+  if(!state.originalImg) return;
+  resetEditState();
+  state.img = state.originalImg;
+  drawOriginal(state.img);
+});
+
+$('btnBestRatio').addEventListener('click', ()=>{
+  if(!state.originalImg){ alert('請先上傳圖片'); return; }
+  const wallW = parseFloat($('wallW').value);
+  const wallH = parseFloat($('wallH').value);
+  if(!wallW || !wallH){ alert('請先在上面填寫拼圖畫的寬、高。'); return; }
+  const targetRatio = wallW / wallH;
+
+  const totalRot = state.editRotationBase + state.editRotationFine;
+  const rotated = buildRotatedCanvas(state.originalImg, totalRot);
+  const rw = rotated.width, rh = rotated.height;
+  const curRatio = rw / rh;
+
+  // 置中裁切：哪一邊相對「太寬/太高」就裁哪一邊，盡量保留最大範圍，
+  // 裁出來的比例會完全等於畫作寬高比，套用馬賽克時才不會被拉伸變形。
+  let cw, ch, cx, cy;
+  if(curRatio > targetRatio){
+    ch = rh; cw = rh * targetRatio; cy = 0; cx = (rw - cw) / 2;
+  } else {
+    cw = rw; ch = rw / targetRatio; cx = 0; cy = (rh - ch) / 2;
+  }
+  state.editCropRect = { x:cx, y:cy, w:cw, h:ch };
+
+  $('editorBox').style.display = 'block';
+  $('btnToggleEditor').textContent = '收合調整面板 ▲';
+  renderEditorPreview();
+});
+
+$('btnApplyEdit').addEventListener('click', ()=>{
+  if(!state.originalImg) return;
+  const totalRot = state.editRotationBase + state.editRotationFine;
+  const rotated = buildRotatedCanvas(state.originalImg, totalRot);
+
+  let sx=0, sy=0, sw=rotated.width, sh=rotated.height;
+  if(state.editCropRect && state.editCropRect.w>4 && state.editCropRect.h>4){
+    sx = Math.max(0, Math.round(state.editCropRect.x));
+    sy = Math.max(0, Math.round(state.editCropRect.y));
+    sw = Math.min(rotated.width - sx, Math.round(state.editCropRect.w));
+    sh = Math.min(rotated.height - sy, Math.round(state.editCropRect.h));
+    if(sw<=0 || sh<=0){ sx=0; sy=0; sw=rotated.width; sh=rotated.height; }
+  }
+
+  const out = document.createElement('canvas');
+  out.width = sw; out.height = sh;
+  const octx = out.getContext('2d');
+  octx.filter = brightnessContrastFilterString();
+  octx.drawImage(rotated, sx, sy, sw, sh, 0, 0, sw, sh);
+  octx.filter = 'none';
+
+  const finalImg = new Image();
+  finalImg.onload = ()=>{
+    state.img = finalImg;
+    drawOriginal(finalImg);
+    // 套用調整後直接自動重新產生拼貼模擬，不用使用者再回去按一次按鈕
+    renderMosaicPreview();
+  };
+  finalImg.src = out.toDataURL('image/png');
+});
+
+/* =========================================================================
+ * 8. 渲染馬賽克預覽（2D / 簡易 3D 質感）
+ * =======================================================================*/
+function renderMosaicPreview(){
+  if(!state.img){ alert('請先上傳圖片'); return; }
+  const spec = currentSpec();
+  const paletteLab = getPaletteLab(state.shapeKey, spec.sizeLabel);
+  if(!paletteLab){
+    alert(`這個款式目前還沒有可選顏色，麻煩換一個規格再試試看。`);
+    return;
+  }
+  runHeavy('計算馬賽克中，圖片較大時可能需要幾秒…', ()=>{
+    const wallW = parseFloat($('wallW').value);
+    const wallH = parseFloat($('wallH').value);
+    const grid = computeGrid(wallW, wallH, state.shapeKey, spec.sizeCm, spec.groutCm);
+    state.grid = grid;
+    // 漸層抖動與色號合併都是「工廠工作圖」頁面才看得到、才能調整的施工
+    // 效率設定，客戶端看到的拼貼模擬邏輯本身不受影響（拿不到這兩個控制項
+    // 時就照預設值：不抖動、有合併，跟客戶端目前的呈現方式一致）。
+    const useDither = $('ditherToggleFactory') ? $('ditherToggleFactory').checked : false;
+    state.matrix = useDither
+      ? sampleImageToTileMatrixDithered(state.img, grid.cols, grid.rows, paletteLab)
+      : sampleImageToTileMatrix(state.img, grid.cols, grid.rows, paletteLab);
+
+    const mergeOn = $('mergeSimilarToggle') ? $('mergeSimilarToggle').checked : true;
+    if(mergeOn){
+      const threshold = $('mergeThreshold') ? parseFloat($('mergeThreshold').value) : 3;
+      mergeSimilarColors(state.matrix, paletteLab, threshold);
+    }
+    state.sheets = null; // invalidate cached worksheet split
+
+    drawMosaicCanvas('cvMosaic', 420, 320);
+    renderBOM();
+    buildSheetPicker();
+    clearSettingsDirty();
+  });
+}
+
+// 磚體在「磚+溝縫」總週期中實際佔的比例，例如 1.8cm 磚配 0.2cm 溝縫 = 90%。
+// 預覽/工作圖的磚跟磚間隙都要照這個比例畫，溝縫寬度設定改變時畫面才會真的跟著變。
+function tileFillFraction(){
+  const g = state.grid;
+  if(!g || !(g.sizeCm+g.groutCm > 0)) return 0.9;
+  return g.sizeCm / (g.sizeCm + g.groutCm);
+}
+
+function drawMosaicCanvas(canvasId, boxW, boxH){
+  const { matrix, grid, shapeKey, layoutMode, groutColor, render3d } = state;
+  const cv = $(canvasId);
+  const cellPx = Math.max(2, Math.floor(Math.min(boxW/grid.cols, boxH/grid.rows)));
+  cv.width = grid.cols*cellPx;
+  cv.height = grid.rows*cellPx + (shapeKey==='circle' && layoutMode==='hex' ? Math.floor(cellPx/2) : 0);
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = groutColor;
+  ctx.fillRect(0,0,cv.width,cv.height);
+
+  const fillFrac = tileFillFraction();
+  // inset：每邊留給溝縫的寬度 = 整格寬 × (1-磚體佔比) ÷ 2；下限 0.4px 純粹避免
+  // 縮到 0 或負值，不是為了「畫好看」而蓋掉使用者設定的實際比例。
+  const inset = shapeKey==='square' ? Math.max(0.4, cellPx*(1-fillFrac)/2) : 0;
+  const circleR = (cellPx*fillFrac)/2;
+  // 邊框粗細至少 1px，格子再小也還是看得到浮雕邊，不會被縮到消失
+  const bevel = Math.max(1, Math.round(cellPx*0.14));
+
+  for(let y=0;y<grid.rows;y++){
+    for(let x=0;x<grid.cols;x++){
+      const tile = matrix[y][x];
+      let cx = x*cellPx, cy = y*cellPx;
+      if(shapeKey==='circle' && layoutMode==='hex' && y%2===1) cx += cellPx/2;
+
+      if(shapeKey==='square'){
+        const size = cellPx-2*inset;
+        ctx.fillStyle = tile.hex;
+        ctx.fillRect(cx+inset, cy+inset, size, size);
+        if(render3d){
+          // 明顯的斜光浮雕：左上亮邊＋右下暗邊，模擬釉面凸起的立體感，
+          // 用實色邊條而非漸層，格子縮到很小時邊條依然看得出來。
+          ctx.fillStyle = 'rgba(255,255,255,0.55)';
+          ctx.fillRect(cx+inset, cy+inset, size, bevel);           // 上邊高光
+          ctx.fillRect(cx+inset, cy+inset, bevel, size);           // 左邊高光
+          ctx.fillStyle = 'rgba(0,0,0,0.38)';
+          ctx.fillRect(cx+inset, cy+inset+size-bevel, size, bevel); // 下邊陰影
+          ctx.fillRect(cx+inset+size-bevel, cy+inset, bevel, size); // 右邊陰影
+          // 中央再疊一層柔和斜向漸層，增加圓潤的釉面光澤感
+          const grad = ctx.createLinearGradient(cx,cy,cx+cellPx,cy+cellPx);
+          grad.addColorStop(0,'rgba(255,255,255,0.25)');
+          grad.addColorStop(0.5,'rgba(255,255,255,0)');
+          grad.addColorStop(1,'rgba(0,0,0,0.18)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(cx+inset, cy+inset, size, size);
+        }
+      } else {
+        const r = circleR;
+        ctx.beginPath();
+        ctx.arc(cx+cellPx/2, cy+cellPx/2, r, 0, Math.PI*2);
+        ctx.fillStyle = tile.hex;
+        ctx.fill();
+        if(render3d){
+          const grad = ctx.createRadialGradient(
+            cx+cellPx/2-r*0.4, cy+cellPx/2-r*0.4, r*0.1,
+            cx+cellPx/2, cy+cellPx/2, r
+          );
+          grad.addColorStop(0,'rgba(255,255,255,0.75)');
+          grad.addColorStop(0.55,'rgba(255,255,255,0)');
+          grad.addColorStop(1,'rgba(0,0,0,0.45)');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          // 底部加一道細窄的暗邊，強化球面凸起感（格子再小也能辨識）
+          ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+          ctx.lineWidth = Math.max(1, bevel*0.6);
+          ctx.beginPath();
+          ctx.arc(cx+cellPx/2, cy+cellPx/2, r-ctx.lineWidth/2, Math.PI*0.15, Math.PI*0.85);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+}
+
+$('btnRender').addEventListener('click', renderMosaicPreview);
+$('btn2d').addEventListener('click', ()=>{
+  state.render3d = false;
+  $('btn2d').classList.add('active');
+  $('btn3d').classList.remove('active');
+  if(state.matrix) drawMosaicCanvas('cvMosaic',420,320);
+});
+$('btn3d').addEventListener('click', ()=>{
+  state.render3d = true;
+  $('btn3d').classList.add('active');
+  $('btn2d').classList.remove('active');
+  if(state.matrix) drawMosaicCanvas('cvMosaic',420,320);
+});
+
+/* =========================================================================
+ * 8b. 放大鏡（滑鼠 hover）＋ 獨立放大檢視 Modal
+ * =======================================================================*/
+(function setupMosaicMagnifier(){
+  const srcCanvas = $('cvMosaic');
+  const lens = $('magnifierLens');
+  const lensCtx = lens.getContext('2d');
+  const lensSize = 180;
+  const zoomFactor = 3;
+
+  srcCanvas.addEventListener('mousemove', e=>{
+    if(!state.matrix) return;
+    const rect = srcCanvas.getBoundingClientRect();
+    const scaleX = srcCanvas.width / rect.width;
+    const scaleY = srcCanvas.height / rect.height;
+    const px = (e.clientX - rect.left) * scaleX;
+    const py = (e.clientY - rect.top) * scaleY;
+
+    const sw = lensSize / zoomFactor, sh = lensSize / zoomFactor;
+    const sx = Math.max(0, Math.min(srcCanvas.width - sw, px - sw/2));
+    const sy = Math.max(0, Math.min(srcCanvas.height - sh, py - sh/2));
+
+    lensCtx.imageSmoothingEnabled = false;
+    lensCtx.clearRect(0,0,lensSize,lensSize);
+    lensCtx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, lensSize, lensSize);
+    // 十字準心，方便對應游標實際指到哪一顆
+    lensCtx.strokeStyle = 'rgba(0,0,0,0.5)';
+    lensCtx.lineWidth = 1;
+    lensCtx.beginPath();
+    lensCtx.moveTo(lensSize/2-8, lensSize/2); lensCtx.lineTo(lensSize/2+8, lensSize/2);
+    lensCtx.moveTo(lensSize/2, lensSize/2-8); lensCtx.lineTo(lensSize/2, lensSize/2+8);
+    lensCtx.stroke();
+
+    // 放大鏡跟著游標，優先顯示在游標右上方；靠邊界時自動翻到不擋到游標的一側
+    const wrapRect = srcCanvas.parentElement.getBoundingClientRect();
+    let left = (e.clientX - wrapRect.left) + 18;
+    let top  = (e.clientY - wrapRect.top) - lensSize - 18;
+    if(top < 0) top = (e.clientY - wrapRect.top) + 18;
+    if(left + lensSize > wrapRect.width) left = (e.clientX - wrapRect.left) - lensSize - 18;
+    lens.style.left = left + 'px';
+    lens.style.top = top + 'px';
+    lens.style.display = 'block';
+  });
+  srcCanvas.addEventListener('mouseleave', ()=>{ lens.style.display = 'none'; });
+
+  $('btnZoomMosaic').addEventListener('click', ()=>{
+    if(!state.matrix){ alert('請先產生馬賽克預覽'); return; }
+    const targetW = Math.min(window.innerWidth*0.85, 1200);
+    const targetH = Math.min(window.innerHeight*0.7, 900);
+    drawMosaicCanvas('cvMosaicLarge', targetW, targetH);
+    $('zoomModal').classList.add('active');
+  });
+  $('btnCloseZoom').addEventListener('click', ()=>{
+    $('zoomModal').classList.remove('active');
+  });
+  $('zoomModal').addEventListener('click', e=>{
+    if(e.target.id === 'zoomModal') $('zoomModal').classList.remove('active');
+  });
+})();
+
+/* =========================================================================
+ * 9. BOM 統計
+ * =======================================================================*/
+function renderBOM(){
+  const { matrix, grid } = state;
+  const counts = {}; // code -> count
+  const tileInfo = {}; // code -> {hex} (from the currently-matched matrix, no external lookup needed)
+  let total = 0;
+  for(const row of matrix){
+    for(const tile of row){
+      counts[tile.code] = (counts[tile.code]||0)+1;
+      tileInfo[tile.code] = tile;
+      total++;
+    }
+  }
+  // 實際磚體覆蓋面積（顆數 × 單顆面積），跟顧客要求的畫作面積不一定完全
+  // 相等——因為顆數只能是整數，寬高很少剛好是「磚距」的整數倍，四周通常
+  // 會留一點裁不掉的餘邊。兩個數字都顯示出來，避免現場誤會兩者應該相等。
+  const actualAreaM2 = (grid.cols*grid.rows*Math.pow((grid.sizeCm)/100,2) *
+                  (state.shapeKey==='circle' ? Math.PI/4 : 1)).toFixed(3);
+  const wallW = parseFloat($('wallW').value), wallH = parseFloat($('wallH').value);
+  const wallAreaM2 = ((wallW/100) * (wallH/100)).toFixed(2);
+  const actualCoveredW = (grid.cols*grid.pitch).toFixed(1);
+  const actualCoveredH = (grid.rows*grid.pitch).toFixed(1);
+  const marginW = (wallW - actualCoveredW).toFixed(1);
+  const marginH = (wallH - actualCoveredH).toFixed(1);
+
+  const spec = currentSpec();
+  const meshSpec = getMeshSpec(state.shapeKey, spec.sizeLabel);
+  let tpsX, tpsY, meshLabel, meshIsOfficial;
+  if(meshSpec){
+    tpsX = meshSpec.cols; tpsY = meshSpec.rows;
+    meshLabel = `${meshSpec.sheetW}×${meshSpec.sheetH}cm（官方聯網規格）`;
+    meshIsOfficial = true;
+  } else {
+    const tps = Math.max(1, Math.round(state.meshSizeCm / grid.pitch));
+    tpsX = tpsY = tps;
+    meshLabel = `${state.meshSizeCm}×${state.meshSizeCm}cm（估算，此規格尚無官方聯網資料）`;
+    meshIsOfficial = false;
+  }
+  const sheetsAcross = Math.ceil(grid.cols/tpsX);
+  const sheetsDown = Math.ceil(grid.rows/tpsY);
+  const totalSheets = sheetsAcross*sheetsDown;
+
+  $('bomCards').innerHTML = `
+    <div class="stat-card"><div class="num">${total}</div><div class="lbl">總顆數</div></div>
+    <div class="stat-card"><div class="num">${Math.ceil(total*1.05)}</div><div class="lbl">建議多準備 (+5%)</div></div>
+    <div class="stat-card"><div class="num">${wallAreaM2} m²</div><div class="lbl">您指定的面積</div></div>
+    <div class="stat-card"><div class="num">${actualAreaM2} m²</div><div class="lbl">實際完成面積</div></div>
+  `;
+  const marginNote = document.getElementById('areaMarginNote') || (()=>{
+    const d = document.createElement('div');
+    d.id = 'areaMarginNote';
+    d.className = 'hint';
+    $('bomCards').insertAdjacentElement('afterend', d);
+    return d;
+  })();
+  if(Math.abs(marginW)>0.05 || Math.abs(marginH)>0.05){
+    marginNote.textContent = `⚠ 因為顆粒只能是整數顆，實際完成的畫作大小會是 ${actualCoveredW}×${actualCoveredH}cm，`
+      + `跟您填的 ${wallW}×${wallH}cm 比起來，寬邊少 ${marginW}cm、高邊少 ${marginH}cm，`
+      + `四周會有一點點留白，可以做畫框或微調想要的尺寸。`;
+  } else {
+    marginNote.textContent = '';
+  }
+
+  const tbody = document.querySelector('#bomTable tbody');
+  tbody.innerHTML = '';
+  Object.entries(counts)
+    .sort((a,b)=>b[1]-a[1])
+    .forEach(([code,count])=>{
+      const p = tileInfo[code];
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><span class="swatch" style="background:${p.hex}"></span>${p.code}</td>
+        <td>${p.hex}</td><td>${count}</td><td>${Math.ceil(count*1.05)}</td>
+        <td>${((count/total)*100).toFixed(1)}%</td>`;
+      tbody.appendChild(tr);
+    });
+
+  state._bomMeta = { tpsX, tpsY, meshLabel, meshIsOfficial, sheetsAcross, sheetsDown, counts, total };
+}
+
+/* =========================================================================
+ * 10. 工廠工作圖：依聯網切割 + 座標編號 (A1, B1, A2...)
+ * =======================================================================*/
+function colLetter(n){
+  // 0->A, 1->B ... 26->AA ...
+  let s = '';
+  n += 1;
+  while(n>0){
+    const rem = (n-1)%26;
+    s = String.fromCharCode(65+rem) + s;
+    n = Math.floor((n-1)/26);
+  }
+  return s;
+}
+
+function buildSheets(){
+  if(state.sheets) return state.sheets;
+  const { grid, matrix } = state;
+  const meta = state._bomMeta;
+  const tpsX = meta.tpsX, tpsY = meta.tpsY;
+  const sheets = [];
+  for(let sy=0; sy<meta.sheetsDown; sy++){
+    for(let sx=0; sx<meta.sheetsAcross; sx++){
+      const label = `${colLetter(sx)}${sy+1}`;
+      const cells = [];
+      for(let y=sy*tpsY; y<Math.min(grid.rows,(sy+1)*tpsY); y++){
+        for(let x=sx*tpsX; x<Math.min(grid.cols,(sx+1)*tpsX); x++){
+          cells.push({ x, y, tile: matrix[y][x] });
+        }
+      }
+      sheets.push({ label, sx, sy, cells, rows: Math.min(tpsY, grid.rows-sy*tpsY), cols: Math.min(tpsX, grid.cols-sx*tpsX) });
+    }
+  }
+  state.sheets = sheets;
+  return sheets;
+}
+
+function buildSheetPicker(){
+  if(!state.matrix){ return; }
+  const sheets = buildSheets();
+  const wrap = $('sheetPicker');
+  wrap.innerHTML = '';
+  sheets.forEach((s,i)=>{
+    const b = document.createElement('button');
+    b.className = 'sheet-chip' + (i===0?' active':'');
+    b.textContent = s.label;
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('.sheet-chip').forEach(c=>c.classList.remove('active'));
+      b.classList.add('active');
+      drawSheet(s);
+    });
+    wrap.appendChild(b);
+  });
+  if(sheets.length) drawSheet(sheets[0]);
+}
+
+function setWorksheetMode(mode){
+  state.worksheetMode = mode;
+  $('modeFullBtn').classList.toggle('active', mode==='full');
+  $('modeCheckpointBtn').classList.toggle('active', mode==='checkpoint');
+  const activeChip = document.querySelector('.sheet-chip.active');
+  const sheets = state.sheets;
+  if(!sheets) return;
+  const idx = activeChip ? Array.from(document.querySelectorAll('.sheet-chip')).indexOf(activeChip) : 0;
+  drawSheet(sheets[Math.max(0,idx)]);
+}
+$('modeFullBtn').addEventListener('click', ()=> setWorksheetMode('full'));
+$('modeCheckpointBtn').addEventListener('click', ()=> setWorksheetMode('checkpoint'));
+
+// 施工效率設定（漸層抖動／色號合併）改變時，直接重新計算整張拼貼
+function regenerateIfReady(){
+  if(state.img) renderMosaicPreview();
+}
+$('ditherToggleFactory').addEventListener('change', regenerateIfReady);
+$('mergeSimilarToggle').addEventListener('change', ()=>{
+  $('mergeThresholdRow').style.display = $('mergeSimilarToggle').checked ? 'block' : 'none';
+  regenerateIfReady();
+});
+$('mergeThreshold').addEventListener('input', e=>{
+  $('mergeThresholdLabel').textContent = e.target.value;
+});
+$('mergeThreshold').addEventListener('change', regenerateIfReady);
+
+function drawSheet(sheet){
+  $('sheetTitle').textContent = `聯網 — ${sheet.label}　(${sheet.cols}×${sheet.rows} 顆，模式：${state.worksheetMode==='full'?'每顆標色號':'校驗點'})`;
+  const cv = $('cvSheet');
+  const cellPx = 46;
+  const pad = 30;
+  const footerH = 26;
+  cv.width = sheet.cols*cellPx + pad*2;
+  cv.height = sheet.rows*cellPx + pad*2 + footerH;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle = state.groutColor;
+  ctx.fillRect(pad,pad,sheet.cols*cellPx, sheet.rows*cellPx);
+
+  const tpsX = state._bomMeta.tpsX, tpsY = state._bomMeta.tpsY;
+
+  // 先把整張聯網組成一個 [row][col] -> tile 的本地矩陣，方便算橫向連續色塊
+  const local = [];
+  for(let ly=0; ly<sheet.rows; ly++) local.push(new Array(sheet.cols).fill(null));
+  sheet.cells.forEach(cell=>{
+    const lx = cell.x - sheet.sx*tpsX;
+    const ly = cell.y - sheet.sy*tpsY;
+    local[ly][lx] = cell.tile;
+  });
+
+  // 1) 先畫每一顆磚的底色（不論哪種模式，這張圖本身就是 1:1 全彩對照圖）
+  const sheetFillFrac = tileFillFraction();
+  const sheetInset = Math.max(0.4, cellPx*(1-sheetFillFrac)/2);
+  const sheetCircleR = (cellPx*sheetFillFrac)/2;
+  for(let ly=0; ly<sheet.rows; ly++){
+    for(let lx=0; lx<sheet.cols; lx++){
+      const tile = local[ly][lx];
+      if(!tile) continue;
+      // 圓形＋交錯蜂巢排列時，跟顧客預覽圖用同一套奇數列位移邏輯，
+      // 兩邊畫面才會一致（實際蜂巢排列仍以聯網製造商的成品為準，這裡
+      // 只是讓工作圖的視覺呈現跟顧客預覽對得上，避免兩張圖看起來不同）。
+      let cx = pad + lx*cellPx, cy = pad + ly*cellPx;
+      if(state.shapeKey==='circle' && state.layoutMode==='hex' && ly%2===1) cx += cellPx/2;
+      if(state.shapeKey==='square'){
+        const size = cellPx - 2*sheetInset;
+        ctx.fillStyle = tile.hex;
+        ctx.fillRect(cx+sheetInset, cy+sheetInset, size, size);
+        ctx.strokeStyle='rgba(0,0,0,.15)';
+        ctx.strokeRect(cx+sheetInset, cy+sheetInset, size, size);
+      } else {
+        ctx.beginPath();
+        ctx.arc(cx+cellPx/2, cy+cellPx/2, sheetCircleR, 0, Math.PI*2);
+        ctx.fillStyle = tile.hex;
+        ctx.fill();
+      }
+    }
+  }
+
+  // 2) 依模式疊上文字標記
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  function labelColorFor(hex){
+    const lum = 0.299*hexToRgb(hex)[0]+0.587*hexToRgb(hex)[1]+0.114*hexToRgb(hex)[2];
+    return lum>150 ? '#000' : '#fff';
+  }
+  // 工作圖上的標記只留數字的「後兩碼」，去掉英文字母（例如 M06 → 06、
+  // 6A02 → 02、9J95 → 95），方便師傅在小格子裡快速辨識；正式對料/叫貨
+  // 還是用「本張色號圖例」跟 BOM/CSV/Excel 裡的完整色號，那些地方都沒有
+  // 簡化。注意：只取後兩碼可能讓不同色號的標記數字重複（例如 6A02 跟
+  // 8B02 都會標成 02），純粹是貼磚時的視覺輔助，仍要以顏色本身＋色號
+  // 圖例核對，不能只看這兩碼數字判斷。
+  function shortLabelFor(code){
+    const digits = code.replace(/[^0-9]/g, '');
+    if(!digits) return code;
+    return digits.slice(-2);
+  }
+
+  if(state.worksheetMode==='full'){
+    ctx.font = '10px monospace';
+    for(let ly=0; ly<sheet.rows; ly++){
+      for(let lx=0; lx<sheet.cols; lx++){
+        const tile = local[ly][lx];
+        if(!tile) continue;
+        let cx = pad + lx*cellPx + cellPx/2;
+        const cy = pad + ly*cellPx + cellPx/2;
+        if(state.shapeKey==='circle' && state.layoutMode==='hex' && ly%2===1) cx += cellPx/2;
+        ctx.fillStyle = labelColorFor(tile.hex);
+        ctx.fillText(shortLabelFor(tile.code), cx, cy);
+      }
+    }
+  } else {
+    // 校驗點模式：逐列找「同色連續區塊」，只在區塊起點標「色號×連續顆數」
+    ctx.font = 'bold 10px monospace';
+    for(let ly=0; ly<sheet.rows; ly++){
+      let lx = 0;
+      while(lx < sheet.cols){
+        const tile = local[ly][lx];
+        if(!tile){ lx++; continue; }
+        let runLen = 1;
+        while(lx+runLen < sheet.cols && local[ly][lx+runLen] && local[ly][lx+runLen].code===tile.code){
+          runLen++;
+        }
+        let cx = pad + lx*cellPx + cellPx/2;
+        const cy = pad + ly*cellPx + cellPx/2;
+        if(state.shapeKey==='circle' && state.layoutMode==='hex' && ly%2===1) cx += cellPx/2;
+        ctx.fillStyle = labelColorFor(tile.hex);
+        const label = runLen>1 ? `${shortLabelFor(tile.code)}×${runLen}` : shortLabelFor(tile.code);
+        ctx.fillText(label, cx, cy);
+        // 在區塊起點畫一個小三角形校驗記號，方便師傅一眼找到標記格
+        ctx.beginPath();
+        ctx.moveTo(cx-cellPx*0.32, cy-cellPx*0.32);
+        ctx.lineTo(cx-cellPx*0.16, cy-cellPx*0.32);
+        ctx.lineTo(cx-cellPx*0.32, cy-cellPx*0.16);
+        ctx.closePath();
+        ctx.fill();
+        lx += runLen;
+      }
+    }
+  }
+
+  // 座標軸標籤
+  ctx.fillStyle = '#333';
+  ctx.font = '11px monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(let x=0;x<sheet.cols;x++){
+    ctx.fillText(String(x+1), pad + x*cellPx + cellPx/2, pad-12);
+  }
+  for(let y=0;y<sheet.rows;y++){
+    ctx.fillText(String(y+1), pad-14, pad + y*cellPx + cellPx/2);
+  }
+
+  // 頁尾品牌／聯絡資訊（PNG、PDF 匯出時都會帶著走）
+  const footerY = pad*2 + sheet.rows*cellPx + footerH/2 - 4;
+  ctx.textAlign = 'left';
+  ctx.font = '10px "Noto Sans TC", sans-serif';
+  ctx.fillStyle = '#555';
+  ctx.fillText(`${COMPANY_INFO.name}　Tel:${COMPANY_INFO.tel}　${COMPANY_INFO.email}`, pad, footerY);
+  ctx.textAlign = 'right';
+  ctx.fillText(`聯網 ${sheet.label}　顆粒 ${state.grid.sizeCm}cm　${new Date().toLocaleDateString('zh-TW')}`, cv.width-pad, footerY);
+
+  renderSheetLegend(sheet);
+}
+
+function renderSheetLegend(sheet){
+  const counts = {}; // code -> {count, hex}
+  sheet.cells.forEach(c=>{
+    if(!counts[c.tile.code]) counts[c.tile.code] = { count:0, hex:c.tile.hex };
+    counts[c.tile.code].count++;
+  });
+  const tbody = document.querySelector('#sheetLegendTable tbody');
+  tbody.innerHTML = '';
+  Object.entries(counts)
+    .sort((a,b)=>b[1].count-a[1].count)
+    .forEach(([code,info])=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><span class="swatch" style="background:${info.hex}"></span></td><td>${code}</td><td>${info.count}</td>`;
+      tbody.appendChild(tr);
+    });
+  $('checkpointHint').style.display = state.worksheetMode==='checkpoint' ? 'block' : 'none';
+}
+
+/* =========================================================================
+ * 11. 匯出：PNG / PDF / CSV
+ * =======================================================================*/
+$('btnExportAllPng').addEventListener('click', ()=>{
+  if(!state.matrix){ alert('請先產生馬賽克預覽'); return; }
+  runHeavy('產生工作圖 PNG 中…', ()=>{
+    const sheets = buildSheets();
+    sheets.forEach(s=>{
+      drawSheet(s);
+      const url = $('cvSheet').toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url; a.download = `worksheet_${s.label}.png`;
+      a.click();
+    });
+  });
+});
+
+$('btnExportPdf').addEventListener('click', ()=>{
+  if(!state.matrix){ alert('請先產生馬賽克預覽'); return; }
+  runHeavy('產生 PDF 施工圖中，聯網較多時請稍候…', ()=>{
+  const { jsPDF } = window.jspdf;
+  const sheets = buildSheets();
+  const pageW = state.meshSizeCm + 4;
+  const pageH = state.meshSizeCm + 6; // 多留 2cm 給頁首品牌列
+  const doc = new jsPDF({ unit:'cm', format:[pageW, pageH] });
+  const spec = currentSpec();
+
+  // ---- 封面頁：公司抬頭 + 專案摘要 ----
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text(COMPANY_INFO.name, pageW/2, 2, { align:'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(COMPANY_INFO.address, pageW/2, 2.6, { align:'center' });
+  doc.text(`Tel：${COMPANY_INFO.tel}　Fax：${COMPANY_INFO.fax}　Email：${COMPANY_INFO.email}`, pageW/2, 3.1, { align:'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('馬賽克拼圖畫 — 1:1 生產施工圖', pageW/2, 4.4, { align:'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  const wallW = parseFloat($('wallW').value), wallH = parseFloat($('wallH').value);
+  const shapeLabel = TILE_SHAPES[state.shapeKey].label;
+  const meta = state._bomMeta;
+  const summaryLines = [
+    `畫作尺寸：${wallW} × ${wallH} cm`,
+    `磚形規格：${shapeLabel}　顆粒 ${spec.sizeCm}cm　溝縫 ${spec.groutCm}cm`,
+    `色庫：${paletteKeyFor(state.shapeKey, spec.sizeLabel)}`,
+    `網格：${state.grid.rows} 列 × ${state.grid.cols} 行（共 ${meta.total} 顆）`,
+    `聯網規格：${meta.meshLabel}　共 ${sheets.length} 張（${meta.sheetsAcross} 橫 × ${meta.sheetsDown} 直）`,
+    `工作圖模式：${state.worksheetMode==='full' ? '每顆標色號' : '校驗點模式'}`,
+    `產出日期：${new Date().toLocaleDateString('zh-TW')}`,
+  ];
+  summaryLines.forEach((line,i)=> doc.text(line, pageW/2, 5.6 + i*0.6, { align:'center' }));
+
+  // ---- 每張聯網一頁：頁首品牌列 + 1:1 對照圖（圖片本身也已內含頁尾資訊） ----
+  sheets.forEach((s)=>{
+    doc.addPage([pageW, pageH]);
+    drawSheet(s);
+    const imgData = $('cvSheet').toDataURL('image/png');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(COMPANY_INFO.name, 1, 1.2);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`聯網 ${s.label}`, pageW-1, 1.2, { align:'right' });
+    doc.addImage(imgData, 'PNG', 1, 1.6, pageW-2, pageH-3.2);
+  });
+  doc.save('production-worksheets.pdf');
+  });
+});
+
+$('btnExportCsv').addEventListener('click', ()=>{
+  if(!state.matrix){ alert('請先產生馬賽克預覽'); return; }
+  const sheets = buildSheets();
+  const meta = state._bomMeta;
+  const header = [
+    [`${COMPANY_INFO.name}`],
+    [`Tel:${COMPANY_INFO.tel} Fax:${COMPANY_INFO.fax} Email:${COMPANY_INFO.email}`],
+    [`產出日期:${new Date().toLocaleDateString('zh-TW')}`],
+    [],
+    ['色號code','hex','聯網位置','格內座標(col,row)','總數量(該色號)'],
+  ];
+  const rows = [...header];
+  sheets.forEach(s=>{
+    s.cells.forEach(cell=>{
+      const localX = cell.x - s.sx*meta.tpsX + 1;
+      const localY = cell.y - s.sy*meta.tpsY + 1;
+      rows.push([cell.tile.code, cell.tile.hex, s.label, `${localX},${localY}`, meta.counts[cell.tile.code]]);
+    });
+  });
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'production-list.csv';
+  a.click();
+});
+
+/* =========================================================================
+ * 11b. 匯出：Excel (.xlsx) — 讓現場/客服可以直接在 Excel 裡微調生產資料
+ * =======================================================================*/
+$('btnExportExcel').addEventListener('click', ()=>{
+  if(!state.matrix){ alert('請先產生馬賽克預覽'); return; }
+  runHeavyAsync('產生 Excel 檔中，顆數較多時可能需要幾秒…', async ()=>{
+    const sheets = buildSheets();
+    const meta = state._bomMeta;
+    const spec = currentSpec();
+    const wallW = parseFloat($('wallW').value), wallH = parseFloat($('wallH').value);
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = COMPANY_INFO.name;
+    workbook.created = new Date();
+
+    // ---- Sheet 1：專案摘要 ----
+    const wsInfo = workbook.addWorksheet('專案摘要');
+    wsInfo.columns = [{width:20},{width:40}];
+    const infoRows = [
+      [COMPANY_INFO.name],
+      [COMPANY_INFO.address],
+      [`Tel：${COMPANY_INFO.tel}　Fax：${COMPANY_INFO.fax}　Email：${COMPANY_INFO.email}`],
+      [],
+      ['畫作尺寸', `${wallW} × ${wallH} cm`],
+      ['磚形規格', `${TILE_SHAPES[state.shapeKey].label}　顆粒 ${spec.sizeCm}cm　溝縫 ${spec.groutCm}cm`],
+      ['色庫', paletteKeyFor(state.shapeKey, spec.sizeLabel)],
+      ['網格', `${state.grid.rows} 列 × ${state.grid.cols} 行（共 ${meta.total} 顆）`],
+      ['聯網規格', `${meta.meshLabel}　共 ${sheets.length} 張（${meta.sheetsAcross} 橫 × ${meta.sheetsDown} 直）`],
+      ['工作圖模式', state.worksheetMode==='full' ? '每顆標色號' : '校驗點模式'],
+      ['產出日期', new Date().toLocaleDateString('zh-TW')],
+    ];
+    infoRows.forEach(r=> wsInfo.addRow(r));
+    wsInfo.getRow(1).font = { bold:true, size:14 };
+
+    // ---- Sheet 2：BOM 統計（色塊直接用儲存格底色表示，方便對色） ----
+    const wsBOM = workbook.addWorksheet('BOM統計');
+    wsBOM.columns = [
+      { header:'色號', key:'code', width:12 },
+      { header:'色塊', key:'swatch', width:8 },
+      { header:'Hex', key:'hex', width:12 },
+      { header:'需求顆數', key:'count', width:12 },
+      { header:'建議備料(+5%)', key:'buffer', width:14 },
+      { header:'佔比', key:'pct', width:10 },
+    ];
+    wsBOM.getRow(1).font = { bold:true };
+    Object.entries(meta.counts)
+      .sort((a,b)=>b[1]-a[1])
+      .forEach(([code,count])=>{
+        // 從目前的矩陣抓一顆該色號的 hex（tileInfo 沒有跨函式保留，直接重找一次）
+        let hex = '#FFFFFF';
+        outer: for(const row of state.matrix){ for(const t of row){ if(t.code===code){ hex=t.hex; break outer; } } }
+        const row = wsBOM.addRow({
+          code, swatch:'', hex, count,
+          buffer: Math.ceil(count*1.05),
+          pct: ((count/meta.total)*100).toFixed(1)+'%',
+        });
+        row.getCell('swatch').fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF'+hex.replace('#','') } };
+      });
+
+    // ---- Sheet 3：生產清單（色號、聯網位置、格內座標，逐顆列出，方便篩選/微調）----
+    const wsList = workbook.addWorksheet('生產清單');
+    wsList.columns = [
+      { header:'色號', key:'code', width:12 },
+      { header:'Hex', key:'hex', width:12 },
+      { header:'聯網位置', key:'sheet', width:12 },
+      { header:'格內座標(col,row)', key:'pos', width:18 },
+      { header:'該色號總數量', key:'total', width:14 },
+    ];
+    wsList.getRow(1).font = { bold:true };
+    sheets.forEach(s=>{
+      s.cells.forEach(cell=>{
+        const localX = cell.x - s.sx*meta.tpsX + 1;
+        const localY = cell.y - s.sy*meta.tpsY + 1;
+        wsList.addRow({
+          code: cell.tile.code, hex: cell.tile.hex, sheet: s.label,
+          pos: `${localX},${localY}`, total: meta.counts[cell.tile.code],
+        });
+      });
+    });
+
+    // ---- Sheet 4：完整網格（每一格＝一顆磚，儲存格底色＋色號，可直接微調）----
+    // 顆數太多時整張網格會非常大、產生檔案會很慢，超過門檻就跳過這張，
+    // 只保留前三個表（摘要／BOM／生產清單）已經足夠拿去對料跟微調。
+    const totalCells = state.grid.rows * state.grid.cols;
+    if(totalCells <= 8000){
+      const wsGrid = workbook.addWorksheet('完整網格(可微調)');
+      wsGrid.getColumn(1).width = 5;
+      for(let x=0;x<state.grid.cols;x++) wsGrid.getColumn(x+2).width = 5;
+      wsGrid.getRow(1).getCell(1).value = '';
+      for(let x=0;x<state.grid.cols;x++) wsGrid.getRow(1).getCell(x+2).value = x+1;
+      wsGrid.getRow(1).font = { bold:true };
+      wsGrid.getColumn(1).font = { bold:true };
+      for(let y=0;y<state.grid.rows;y++){
+        const row = wsGrid.getRow(y+2);
+        row.height = 14;
+        row.getCell(1).value = y+1;
+        for(let x=0;x<state.grid.cols;x++){
+          const tile = state.matrix[y][x];
+          const cell = row.getCell(x+2);
+          cell.value = tile.code;
+          cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF'+tile.hex.replace('#','') } };
+          cell.alignment = { horizontal:'center', vertical:'middle' };
+          cell.font = { size:7, color:{ argb: (0.299*hexToRgb(tile.hex)[0]+0.587*hexToRgb(tile.hex)[1]+0.114*hexToRgb(tile.hex)[2])>150 ? 'FF000000' : 'FFFFFFFF' } };
+        }
+      }
+      wsGrid.views = [{ state:'frozen', xSplit:1, ySplit:1 }];
+    } else {
+      wsInfo.addRow([]);
+      wsInfo.addRow(['備註', `因總顆數達 ${totalCells} 顆，未產生逐顆網格分頁，避免檔案過大／產生過慢；請以「生產清單」分頁的座標欄位對照微調。`]);
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'production-worksheet.xlsx';
+    a.click();
+  });
+});
+
+/* =========================================================================
+ * 12. Tab 切換
+ * =======================================================================*/
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const tab = btn.dataset.tab;
+    // 同一個 data-tab 可能同時存在頁首（桌面）與底部（手機）兩份按鈕，
+    // 兩邊的選取狀態要一起同步，畫面寬度改變/裝置旋轉時才不會兜不起來。
+    document.querySelectorAll('.tab-btn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.tab===tab);
+    });
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    $('view-'+tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
